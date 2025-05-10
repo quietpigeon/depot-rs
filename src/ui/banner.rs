@@ -1,4 +1,4 @@
-pub static BANNER: &'static str = r#"
+pub static BANNER: &str = r#"
        __                 __                 
   ____/ /__  ____  ____  / /_      __________
  / __  / _ \/ __ \/ __ \/ __/_____/ ___/ ___/
