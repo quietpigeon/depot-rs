@@ -1,5 +1,9 @@
 mod app;
+mod commands;
+mod depot;
+mod errors;
 mod keys;
+mod parser;
 mod ui;
 
 fn main() -> color_eyre::Result<()> {
