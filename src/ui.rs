@@ -15,7 +15,6 @@ pub fn render(state: &mut DepotState, frame: &mut Frame) -> Result<(), Error> {
         .constraints(vec![Constraint::Percentage(50), Constraint::Fill(1)])
         .split(frame.area());
     let banner = Text::raw(banner::BANNER);
-    let _ = state.sync()?;
 
     let banner_area = center(
         layout[0],

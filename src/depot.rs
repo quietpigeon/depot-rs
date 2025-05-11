@@ -2,7 +2,7 @@ use versions::SemVer;
 
 use crate::{commands::list_crates, errors::Error, parser::Parsable};
 
-#[derive(Debug, Default)]
+#[derive(Debug)]
 pub struct DepotState {
     pub depot: Depot,
 }
@@ -17,6 +17,13 @@ impl DepotState {
     pub fn sync(&mut self) -> Result<(), Error> {
         self.depot = Depot::get()?;
         Ok(())
+    }
+}
+
+impl Default for DepotState {
+    fn default() -> Self {
+        let depot = Depot::get().expect("failed to initialize `DepotState`");
+        Self { depot }
     }
 }
 
