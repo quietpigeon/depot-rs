@@ -8,7 +8,7 @@ use ratatui::layout::Layout;
 use ratatui::style::Color;
 use ratatui::style::Style;
 use ratatui::text::Text;
-use ratatui::widgets::{Block, Paragraph};
+use ratatui::widgets::Paragraph;
 
 #[derive(Debug)]
 pub struct Start;
@@ -19,19 +19,14 @@ impl Drawable for Start {
             .direction(ratatui::layout::Direction::Vertical)
             .constraints(vec![Constraint::Percentage(50), Constraint::Fill(1)])
             .split(frame.area());
-        let banner = Text::raw(banner::BANNER);
 
+        let banner = Text::raw(banner::BANNER);
         let banner_area = center(
             layout[0],
             Constraint::Length(banner.width() as u16),
             Constraint::Length(banner.height() as u16),
         );
 
-        // Main area.
-        frame.render_widget(
-            Block::bordered().style(Style::new().fg(Color::Yellow)),
-            frame.area(),
-        );
         frame.render_widget(
             Paragraph::new(banner)
                 .style(Style::new().fg(Color::Yellow))
