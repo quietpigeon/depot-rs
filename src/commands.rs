@@ -17,8 +17,9 @@ pub fn list_crates() -> Result<String, Error> {
 /// Gives the latest version and a short description.
 pub fn search_crate(c: &str) -> Result<String, Error> {
     let stdout = Command::new("cargo")
-        .arg("search")
+        .arg("info")
         .arg(c)
+        .arg("--verbose")
         .output()?
         .stdout
         .apply(String::from_utf8)?;
