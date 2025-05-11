@@ -1,4 +1,4 @@
-use crate::{keys::key_handler, ui::render};
+use crate::{depot::DepotState, keys::key_handler, ui::render};
 use color_eyre::Result;
 use crossterm::event::{Event, KeyEventKind};
 use ratatui::DefaultTerminal;
@@ -7,6 +7,7 @@ use ratatui::DefaultTerminal;
 #[derive(Debug, Default)]
 pub struct App {
     running: bool,
+    state: DepotState,
 }
 
 impl App {
@@ -24,7 +25,7 @@ impl App {
     pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
         self.running = true;
         while self.running {
-            terminal.draw(render)?;
+            terminal.draw(|f| render(&mut self.state, f).unwrap())?;
             self.handle_crossterm_events()?;
         }
         Ok(())
