@@ -1,4 +1,5 @@
 use crate::depot::{Krate, Krates};
+use nom::bytes::complete::take_until;
 use nom::character::complete::alphanumeric1;
 use nom::character::complete::char;
 use nom::character::complete::{multispace1, newline, space1, u32};
@@ -27,7 +28,7 @@ impl Parsable for Krate {
         let (s, _) = multispace1(s)?;
         let (s, _) = char('v')(s)?;
         let (s, version) = SemVer::parse(s)?;
-        let (s, _) = char(':')(s)?;
+        let (s, _) = take_until("\n")(s)?;
         let (s, _) = newline(s)?;
         let (s, binaries) = separated_list1(newline, parse_binary).parse(s)?;
 
@@ -90,13 +91,15 @@ mod tests {
         depot
         depot-rs
 foo v0.1.0:
-    foo
-            "#;
+    foo"#;
 
         let s2 = r#"depot-rs v0.1.0:
         depot
-        depot-rs
-            "#;
+        depot-rs"#;
+
+        let s3 = r#"uv v0.6.16 (https://github.com/astral-sh/uv#43e5a6ef):
+    uv
+    uvx"#;
 
         assert_eq!(
             Krates::parse(s1).unwrap().1,
@@ -120,6 +123,15 @@ foo v0.1.0:
                 name: "depot-rs".to_string(),
                 version: SemVer::parse("0.1.0").unwrap().1,
                 binaries: vec!["depot".to_string(), "depot-rs".to_string()]
+            },])
+        );
+
+        assert_eq!(
+            Krates::parse(s3).unwrap().1,
+            Krates(vec![Krate {
+                name: "uv".to_string(),
+                version: SemVer::parse("0.6.16").unwrap().1,
+                binaries: vec!["uv".to_string(), "uvx".to_string()]
             },])
         );
     }
