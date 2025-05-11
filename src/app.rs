@@ -10,7 +10,7 @@ use ratatui::DefaultTerminal;
 #[derive(Debug, Default)]
 pub struct App {
     running: bool,
-    state: DepotState,
+    pub state: DepotState,
     pub view: View,
 }
 

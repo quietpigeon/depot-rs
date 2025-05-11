@@ -1,10 +1,11 @@
-use versions::SemVer;
-
 use crate::{commands::list_crates, errors::Error, parser::Parsable};
+use ratatui::widgets::ListState;
+use versions::SemVer;
 
 #[derive(Debug)]
 pub struct DepotState {
     pub depot: Depot,
+    pub list_state: ListState,
 }
 
 #[derive(Debug, Default)]
@@ -13,17 +14,11 @@ pub struct Depot {
     pub crate_count: i64,
 }
 
-impl DepotState {
-    pub fn sync(&mut self) -> Result<(), Error> {
-        self.depot = Depot::get()?;
-        Ok(())
-    }
-}
-
 impl Default for DepotState {
     fn default() -> Self {
         let depot = Depot::get().expect("failed to initialize `DepotState`");
-        Self { depot }
+        let list_state = ListState::default();
+        Self { depot, list_state }
     }
 }
 

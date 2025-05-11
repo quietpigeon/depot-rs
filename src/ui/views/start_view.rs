@@ -1,12 +1,11 @@
 use super::catalog_view::Catalog;
 use super::{Drawable, View, banner, center};
+use crate::ui::DEFAULT_STYLE;
 use crate::{app::App, depot::DepotState, errors::Error, keys::Selectable};
 use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::Frame;
 use ratatui::layout::Constraint;
 use ratatui::layout::Layout;
-use ratatui::style::Color;
-use ratatui::style::Style;
 use ratatui::text::Text;
 use ratatui::widgets::Paragraph;
 
@@ -28,9 +27,7 @@ impl Drawable for Start {
         );
 
         frame.render_widget(
-            Paragraph::new(banner)
-                .style(Style::new().fg(Color::Yellow))
-                .centered(),
+            Paragraph::new(banner).style(DEFAULT_STYLE).centered(),
             banner_area,
         );
         frame.render_widget(
@@ -38,7 +35,7 @@ impl Drawable for Start {
                 "You have {} crates installed.",
                 state.depot.crate_count
             ))
-            .style(Style::new().fg(Color::Yellow))
+            .style(DEFAULT_STYLE)
             .centered(),
             layout[1],
         );
