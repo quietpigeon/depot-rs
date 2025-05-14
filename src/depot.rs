@@ -1,5 +1,10 @@
-use crate::{commands::list_crates, errors::Error, parser::Parsable};
+use crate::{
+    commands::{list_crates, search_crate},
+    errors::Error,
+    parser::Parsable,
+};
 use ratatui::widgets::ListState;
+use std::fmt::{self, Display};
 use versions::SemVer;
 
 #[derive(Debug)]
@@ -22,6 +27,18 @@ impl Default for DepotState {
     }
 }
 
+impl DepotState {
+    pub fn sync_krate(&mut self, name: &str) -> Result<(), Error> {
+        if let Some(idx) = self.depot.store.0.iter().position(|k| k.name == name) {
+            self.depot.store.0[idx].info = KrateInfo::get(name)?;
+        } else {
+            return Err(Error::KrateNotFound);
+        }
+
+        Ok(())
+    }
+}
+
 impl Depot {
     pub fn get() -> Result<Self, Error> {
         let output = list_crates()?;
@@ -40,4 +57,32 @@ pub struct Krate {
     pub name: String,
     pub version: SemVer,
     pub binaries: Vec<String>,
+    pub info: KrateInfo,
+}
+
+impl KrateInfo {
+    fn get(name: &str) -> Result<Self, Error> {
+        let s = search_crate(name)?;
+        let info = KrateInfo::parse(&s)?.1;
+
+        Ok(info)
+    }
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+pub struct KrateInfo {
+    pub description: String,
+    pub tags: Tags,
+}
+
+#[derive(Debug, Default, PartialEq, Eq)]
+// NOTE: We can use an array instead because we know the number of tags is 5 or less.
+pub struct Tags(pub Vec<String>);
+
+impl Display for Tags {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
+        let v: &Vec<String> = &self.0.iter().map(|s| format!("#{s}")).collect();
+        let s = v.join(" ");
+        write!(f, "{s}")
+    }
 }
