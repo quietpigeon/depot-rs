@@ -73,6 +73,9 @@ impl KrateInfo {
 pub struct KrateInfo {
     pub description: String,
     pub tags: Tags,
+    pub latest_version: SemVer,
+    pub license: String,
+    pub rust_version: Option<SemVer>,
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]

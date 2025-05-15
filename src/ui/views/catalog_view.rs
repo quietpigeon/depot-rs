@@ -1,8 +1,11 @@
+use std::rc::Rc;
+
 use super::{View, start_view::Start};
 use crate::depot::Krate;
 use crate::ui::{DEFAULT_COLOR, DEFAULT_STYLE, HIGHLIGHT_STYLE};
 use crate::{depot::DepotState, errors::Error, keys::Selectable, ui::Drawable};
 use crossterm::event::KeyCode;
+use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::Stylize;
 use ratatui::widgets::{Block, BorderType, List, ListItem, Paragraph, Wrap};
@@ -24,39 +27,75 @@ impl Drawable for Catalog {
             .split(layout[0]);
         let right = Layout::default()
             .direction(ratatui::layout::Direction::Vertical)
-            .constraints(vec![Constraint::Percentage(20), Constraint::Fill(2)])
+            .constraints(vec![
+                Constraint::Percentage(20),
+                Constraint::Percentage(10),
+                Constraint::Fill(2),
+            ])
             .split(layout[1]);
 
-        let krates: Vec<ListItem> = state
-            .depot
-            .store
-            .0
-            .iter()
-            .map(|krate| ListItem::from(krate.name.clone()).fg(DEFAULT_COLOR))
-            .collect();
-        let krate_list = List::new(krates)
-            .block(
-                Block::bordered()
-                    .border_type(ratatui::widgets::BorderType::Rounded)
-                    .title("Installed crates")
-                    .style(DEFAULT_STYLE),
-            )
-            .highlight_symbol("* ")
-            .highlight_style(HIGHLIGHT_STYLE)
-            .highlight_spacing(ratatui::widgets::HighlightSpacing::Always);
-
-        if let Some(ix) = state.list_state.selected() {
-            let krate = &state.depot.store.0[ix];
-            if !krate.info.description.is_empty() {
-                let _ = render_tag_list(krate, frame, left[1]);
-                let _ = render_description(krate, frame, right[0]);
-            }
-        }
-
-        frame.render_stateful_widget(krate_list, left[0], &mut state.list_state);
+        render_left(state, frame, left)?;
+        render_right(state, frame, right)?;
 
         Ok(())
     }
+}
+fn render_left(state: &mut DepotState, frame: &mut Frame, area: Rc<[Rect]>) -> Result<(), Error> {
+    render_catalog(state, frame, area[0])?;
+    if let Some(ix) = state.list_state.selected() {
+        let krate = &state.depot.store.0[ix];
+        if !krate.info.description.is_empty() {
+            render_tag_list(krate, frame, area[1])?;
+        }
+    }
+
+    Ok(())
+}
+
+fn render_right(state: &mut DepotState, frame: &mut Frame, area: Rc<[Rect]>) -> Result<(), Error> {
+    let middle = Layout::default()
+        .direction(ratatui::layout::Direction::Horizontal)
+        .constraints(vec![
+            Constraint::Percentage(30),
+            Constraint::Percentage(40),
+            Constraint::Fill(1),
+        ])
+        .split(area[1]);
+
+    if let Some(ix) = state.list_state.selected() {
+        let krate = &state.depot.store.0[ix];
+        if !krate.info.description.is_empty() {
+            render_description(krate, frame, area[0])?;
+            render_version(krate, frame, middle[0])?;
+            render_license(krate, frame, middle[1])?;
+            render_rust_version(krate, frame, middle[2])?;
+        }
+    }
+
+    Ok(())
+}
+
+fn render_catalog(state: &mut DepotState, frame: &mut Frame, area: Rect) -> Result<(), Error> {
+    let krates: Vec<ListItem> = state
+        .depot
+        .store
+        .0
+        .iter()
+        .map(|krate| ListItem::from(krate.name.clone()).fg(DEFAULT_COLOR))
+        .collect();
+    let krate_list = List::new(krates)
+        .block(
+            Block::bordered()
+                .border_type(ratatui::widgets::BorderType::Rounded)
+                .title("Installed crates")
+                .style(DEFAULT_STYLE),
+        )
+        .highlight_symbol("* ")
+        .highlight_style(HIGHLIGHT_STYLE)
+        .highlight_spacing(ratatui::widgets::HighlightSpacing::Always);
+    frame.render_stateful_widget(krate_list, area, &mut state.list_state);
+
+    Ok(())
 }
 
 fn render_tag_list(krate: &Krate, frame: &mut ratatui::Frame, area: Rect) -> Result<(), Error> {
@@ -81,18 +120,50 @@ fn render_tag_list(krate: &Krate, frame: &mut ratatui::Frame, area: Rect) -> Res
 
 fn render_description(krate: &Krate, frame: &mut ratatui::Frame, area: Rect) -> Result<(), Error> {
     let description = &krate.info.description;
+    render_text_with_title("Description", description, frame, area)?;
+
+    Ok(())
+}
+
+fn render_version(krate: &Krate, frame: &mut ratatui::Frame, area: Rect) -> Result<(), Error> {
+    let version = &krate.version;
+    render_text_with_title("Version", version.to_string().as_str(), frame, area)?;
+
+    Ok(())
+}
+
+fn render_license(krate: &Krate, frame: &mut Frame, area: Rect) -> Result<(), Error> {
+    let license = &krate.info.license;
+    render_text_with_title("License", license, frame, area)?;
+
+    Ok(())
+}
+
+fn render_rust_version(krate: &Krate, frame: &mut Frame, area: Rect) -> Result<(), Error> {
+    if let Some(license) = &krate.info.rust_version {
+        render_text_with_title("Rust version", license.to_string().as_str(), frame, area)?;
+    } else {
+        render_text_with_title("Rust version", "unknown", frame, area)?;
+    }
+
+    Ok(())
+}
+
+fn render_text_with_title(
+    title: &str,
+    text: &str,
+    frame: &mut Frame,
+    area: Rect,
+) -> Result<(), Error> {
     frame.render_widget(
-        Paragraph::new(description.clone())
-            .wrap(Wrap { trim: true })
-            .block(
-                Block::bordered()
-                    .border_type(BorderType::Rounded)
-                    .title("Description")
-                    .style(DEFAULT_STYLE),
-            ),
+        Paragraph::new(text).wrap(Wrap { trim: true }).block(
+            Block::bordered()
+                .border_type(BorderType::Rounded)
+                .title(title)
+                .style(DEFAULT_STYLE),
+        ),
         area,
     );
-
     Ok(())
 }
 

@@ -1,7 +1,6 @@
 use crate::depot::{Krate, Krates};
 use crate::depot::{KrateInfo, Tags};
-use nom::bytes::complete::take_until;
-use nom::bytes::take_till1;
+use nom::bytes::complete::{tag, take_until};
 use nom::character::complete::{alphanumeric1, multispace0};
 use nom::character::complete::{char, space0};
 use nom::character::complete::{multispace1, newline, space1, u32};
@@ -54,9 +53,26 @@ impl Parsable for KrateInfo {
         let (s, _) = multispace0(s)?;
         let (s, tags) = map(opt(Tags::parse), |t| t.unwrap_or_default()).parse(s)?;
         let (s, _) = multispace0(s)?;
-        let (s, description) = map(take_till1(|c| c == '\n'), String::from).parse(s)?;
+        let (s, description) = map(take_until("version"), String::from).parse(s)?;
+        let (s, _) = ws(tag("version:")).parse(s)?;
+        let (s, latest_version) = SemVer::parse(s)?;
+        let (s, _) = newline(s)?;
+        let (s, _) = ws(tag("license:")).parse(s)?;
+        let (s, license) = map(take_until("\n"), String::from).parse(s)?;
+        let (s, _) = newline(s)?;
+        let (s, _) = ws(tag("rust-version:")).parse(s)?;
+        let (s, rust_version) = opt(SemVer::parse).parse(s)?;
+        let (s, _) = take_until("\n")(s)?;
 
-        let k = Self { tags, description };
+        let description = description.trim_end().to_string();
+
+        let k = Self {
+            description,
+            tags,
+            latest_version,
+            license,
+            rust_version,
+        };
 
         Ok((s, k))
     }
@@ -108,6 +124,15 @@ impl Parsable for SemVer {
 /// A parser that recognizes strings that contain `_` as a word.
 fn alphanumeric1_with_hyphen(s: &str) -> IResult<&str, &str> {
     recognize(separated_list1(char('-'), alphanumeric1)).parse(s)
+}
+
+/// A combinator that takes a parser `inner` and produces a parser that also consumes both leading and
+/// trailing whitespace, returning the output of `inner`.
+fn ws<'a, O, E: ParseError<&'a str>, F>(inner: F) -> impl Parser<&'a str, Output = O, Error = E>
+where
+    F: Parser<&'a str, Output = O, Error = E>,
+{
+    delimited(multispace0, inner, multispace0)
 }
 
 /// A combinator that takes a parser `inner` and produces a parser that also consumes both leading and
@@ -247,6 +272,7 @@ foo v0.1.0:
         assert_eq!(
             KrateInfo::parse(output).unwrap().1,
             KrateInfo {
+                description: "A terminal-based dictionary app.".to_string(),
                 tags: Tags(vec![
                     "ratatui".to_string(),
                     "dictionary".to_string(),
@@ -254,7 +280,9 @@ foo v0.1.0:
                     "terminal".to_string(),
                     "thesaurus".to_string()
                 ]),
-                description: "A terminal-based dictionary app.".to_string()
+                latest_version: SemVer::new("0.1.2").unwrap(),
+                license: "MIT".to_string(),
+                rust_version: None
             }
         )
     }
@@ -276,7 +304,10 @@ foo v0.1.0:
             KrateInfo::parse(output).unwrap().1,
             KrateInfo {
                 tags: Tags(vec![]),
-                description: "A terminal-based dictionary app.".to_string()
+                description: "A terminal-based dictionary app.".to_string(),
+                latest_version: SemVer::new("0.1.2").unwrap(),
+                license: "MIT".to_string(),
+                rust_version: None
             }
         )
     }
