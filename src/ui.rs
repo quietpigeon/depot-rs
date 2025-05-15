@@ -9,7 +9,8 @@ use views::start_view::Start;
 mod banner;
 pub mod views;
 
-const DEFAULT_STYLE: Style = Style::new().fg(Color::Yellow);
+const DEFAULT_COLOR: Color = Color::Yellow;
+const DEFAULT_STYLE: Style = Style::new().fg(DEFAULT_COLOR);
 const HIGHLIGHT_STYLE: Style = Style::new().bg(Color::Black);
 
 /// Renders the user interface.

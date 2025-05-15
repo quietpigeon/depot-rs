@@ -5,8 +5,9 @@ use nom::bytes::take_till1;
 use nom::character::complete::{alphanumeric1, multispace0};
 use nom::character::complete::{char, space0};
 use nom::character::complete::{multispace1, newline, space1, u32};
-use nom::combinator::{map, recognize};
+use nom::combinator::{map, opt, recognize};
 use nom::error::ParseError;
+use nom::multi::separated_list0;
 use nom::sequence::delimited;
 use nom::{IResult, Parser, multi::separated_list1};
 use versions::SemVer;
@@ -28,7 +29,7 @@ impl Parsable for Krates {
 
 impl Parsable for Krate {
     fn parse(s: &str) -> IResult<&str, Self> {
-        let (s, name) = map(alphanumeric1_with_hyphen, |x| String::from(x)).parse(s)?;
+        let (s, name) = map(alphanumeric1_with_hyphen, String::from).parse(s)?;
         let (s, _) = multispace1(s)?;
         let (s, _) = char('v')(s)?;
         let (s, version) = SemVer::parse(s)?;
@@ -51,9 +52,9 @@ impl Parsable for KrateInfo {
     fn parse(s: &str) -> IResult<&str, Self> {
         let (s, _) = alphanumeric1_with_hyphen(s)?;
         let (s, _) = multispace0(s)?;
-        let (s, tags) = Tags::parse(s)?;
-        let (s, _) = multispace1(s)?;
-        let (s, description) = map(take_till1(|c| c == '\n'), |x| String::from(x)).parse(s)?;
+        let (s, tags) = map(opt(Tags::parse), |t| t.unwrap_or_default()).parse(s)?;
+        let (s, _) = multispace0(s)?;
+        let (s, description) = map(take_till1(|c| c == '\n'), String::from).parse(s)?;
 
         let k = Self { tags, description };
 
@@ -66,7 +67,7 @@ impl Parsable for Tags {
     fn parse(s: &str) -> IResult<&str, Self> {
         let (s, _) = char('#')(s)?;
         let (s, t) = map(
-            separated_list1(char('#'), ws2(alphanumeric1_with_hyphen)),
+            separated_list0(char('#'), ws2(alphanumeric1_with_hyphen)),
             |v| v.into_iter().map(String::from).collect(),
         )
         .parse(s)?;
@@ -78,7 +79,7 @@ impl Parsable for Tags {
 /// > \tdepot-rs
 fn parse_binary(s: &str) -> IResult<&str, String> {
     let (s, _) = space1(s)?;
-    let (s, b) = map(alphanumeric1_with_hyphen, |x| String::from(x)).parse(s)?;
+    let (s, b) = map(alphanumeric1_with_hyphen, String::from).parse(s)?;
 
     Ok((s, b))
 }
@@ -227,7 +228,7 @@ foo v0.1.0:
                 "bar".to_string(),
                 "baz".to_string()
             ])
-        )
+        );
     }
 
     #[test]
@@ -253,6 +254,28 @@ foo v0.1.0:
                     "terminal".to_string(),
                     "thesaurus".to_string()
                 ]),
+                description: "A terminal-based dictionary app.".to_string()
+            }
+        )
+    }
+
+    #[test]
+    fn parse_krate_info_no_tags() {
+        let output = r#"cargo-thesaurust
+        A terminal-based dictionary app.
+        version: 0.1.2
+        license: MIT
+        rust-version: unknown
+        documentation: https://docs.rs/cargo-thesaurust/0.1.2
+        homepage: https://moreenh.me/pages/projects/cargo-thesaurust
+        repository: https://github.com/quietpigeon/cargo-thesaurust
+        crates.io: https://crates.io/crates/cargo-thesaurust/0.1.2
+        "#;
+
+        assert_eq!(
+            KrateInfo::parse(output).unwrap().1,
+            KrateInfo {
+                tags: Tags(vec![]),
                 description: "A terminal-based dictionary app.".to_string()
             }
         )

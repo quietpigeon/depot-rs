@@ -76,7 +76,6 @@ pub struct KrateInfo {
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
-// NOTE: We can use an array instead because we know the number of tags is 5 or less.
 pub struct Tags(pub Vec<String>);
 
 impl Display for Tags {

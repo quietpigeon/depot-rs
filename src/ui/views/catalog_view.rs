@@ -1,10 +1,10 @@
 use super::{View, start_view::Start};
 use crate::depot::Krate;
-use crate::ui::{DEFAULT_STYLE, HIGHLIGHT_STYLE};
+use crate::ui::{DEFAULT_COLOR, DEFAULT_STYLE, HIGHLIGHT_STYLE};
 use crate::{depot::DepotState, errors::Error, keys::Selectable, ui::Drawable};
 use crossterm::event::KeyCode;
 use ratatui::layout::{Constraint, Layout, Rect};
-use ratatui::style::{Color, Stylize};
+use ratatui::style::Stylize;
 use ratatui::widgets::{Block, BorderType, List, ListItem, Paragraph, Wrap};
 
 #[derive(Debug)]
@@ -32,7 +32,7 @@ impl Drawable for Catalog {
             .store
             .0
             .iter()
-            .map(|krate| ListItem::from(krate.name.clone()).fg(Color::Yellow))
+            .map(|krate| ListItem::from(krate.name.clone()).fg(DEFAULT_COLOR))
             .collect();
         let krate_list = List::new(krates)
             .block(
@@ -47,7 +47,6 @@ impl Drawable for Catalog {
 
         if let Some(ix) = state.list_state.selected() {
             let krate = &state.depot.store.0[ix];
-            // NOTE: Not sure if checking for the
             if !krate.info.description.is_empty() {
                 let _ = render_tag_list(krate, frame, left[1]);
                 let _ = render_description(krate, frame, right[0]);
@@ -61,24 +60,23 @@ impl Drawable for Catalog {
 }
 
 fn render_tag_list(krate: &Krate, frame: &mut ratatui::Frame, area: Rect) -> Result<(), Error> {
-    {
-        let tags: Vec<ListItem> = krate
-            .info
-            .tags
-            .0
-            .iter()
-            .map(|t| ListItem::from(format!("#{t}")).fg(Color::Yellow))
-            .collect();
-        let tag_list = List::new(tags).block(
-            Block::bordered()
-                .border_type(ratatui::widgets::BorderType::Rounded)
-                .title("Tags")
-                .style(DEFAULT_STYLE),
-        );
+    let tags: Vec<ListItem> = krate
+        .info
+        .tags
+        .0
+        .iter()
+        .map(|t| ListItem::from(format!("#{t}")).fg(DEFAULT_COLOR))
+        .collect();
+    let tag_list = List::new(tags).block(
+        Block::bordered()
+            .border_type(ratatui::widgets::BorderType::Rounded)
+            .title("Tags")
+            .style(DEFAULT_STYLE),
+    );
 
-        frame.render_widget(tag_list, area);
-        Ok(())
-    }
+    frame.render_widget(tag_list, area);
+
+    Ok(())
 }
 
 fn render_description(krate: &Krate, frame: &mut ratatui::Frame, area: Rect) -> Result<(), Error> {
@@ -115,20 +113,23 @@ impl Selectable for Catalog {
 }
 
 fn select_next(state: &mut DepotState) -> Result<(), Error> {
-    if state.list_state.selected() == None {
-        return Ok(state.list_state.select_first());
+    if state.list_state.selected().is_none() {
+        state.list_state.select_first();
+        return Ok(());
     }
     // Prevents selecting an index out of bounds. This is most likely a bug on ratatui's
     // side.
     if state.list_state.selected().unwrap() + 1 == state.depot.crate_count as usize {
-        return Ok(());
+        Ok(())
     } else {
-        Ok(state.list_state.select_next())
+        state.list_state.select_next();
+        Ok(())
     }
 }
 
 fn select_previous(state: &mut DepotState) -> Result<(), Error> {
-    Ok(state.list_state.select_previous())
+    state.list_state.select_previous();
+    Ok(())
 }
 
 fn select_crate(state: &mut DepotState) -> Result<(), Error> {
@@ -136,7 +137,7 @@ fn select_crate(state: &mut DepotState) -> Result<(), Error> {
     let i = state.list_state.selected().unwrap();
     let krate = &state.depot.store.0[i];
 
-    // NOTE: Might sideload this somewhere to reduce loading time.
+    // TODO: Might sideload this somewhere to reduce loading time.
     state.sync_krate(krate.name.clone().as_str())?;
 
     Ok(())
