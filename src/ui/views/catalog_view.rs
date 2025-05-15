@@ -1,14 +1,14 @@
 use super::{View, start_view::Start};
+use crate::depot::Krate;
 use crate::ui::{DEFAULT_STYLE, HIGHLIGHT_STYLE};
 use crate::{depot::DepotState, errors::Error, keys::Selectable, ui::Drawable};
 use crossterm::event::KeyCode;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::{Color, Stylize};
-use ratatui::widgets::{Block, List, ListItem};
+use ratatui::widgets::{Block, BorderType, List, ListItem, Paragraph, Wrap};
 
 #[derive(Debug)]
 pub struct Catalog;
-
 impl Drawable for Catalog {
     fn render(
         state: &mut crate::depot::DepotState,
@@ -16,12 +16,16 @@ impl Drawable for Catalog {
     ) -> Result<(), crate::errors::Error> {
         let layout = Layout::default()
             .direction(ratatui::layout::Direction::Horizontal)
-            .constraints(vec![Constraint::Percentage(20), Constraint::Fill(1)])
+            .constraints(vec![Constraint::Percentage(30), Constraint::Fill(1)])
             .split(frame.area());
         let left = Layout::default()
             .direction(ratatui::layout::Direction::Vertical)
             .constraints(vec![Constraint::Percentage(70), Constraint::Fill(1)])
             .split(layout[0]);
+        let right = Layout::default()
+            .direction(ratatui::layout::Direction::Vertical)
+            .constraints(vec![Constraint::Percentage(20), Constraint::Fill(2)])
+            .split(layout[1]);
 
         let krates: Vec<ListItem> = state
             .depot
@@ -42,7 +46,12 @@ impl Drawable for Catalog {
             .highlight_spacing(ratatui::widgets::HighlightSpacing::Always);
 
         if let Some(ix) = state.list_state.selected() {
-            let _ = render_tag_list(state, frame, ix, left[1]);
+            let krate = &state.depot.store.0[ix];
+            // NOTE: Not sure if checking for the
+            if !krate.info.description.is_empty() {
+                let _ = render_tag_list(krate, frame, left[1]);
+                let _ = render_description(krate, frame, right[0]);
+            }
         }
 
         frame.render_stateful_widget(krate_list, left[0], &mut state.list_state);
@@ -51,14 +60,8 @@ impl Drawable for Catalog {
     }
 }
 
-fn render_tag_list(
-    state: &mut DepotState,
-    frame: &mut ratatui::Frame,
-    ix: usize,
-    area: Rect,
-) -> Result<(), Error> {
+fn render_tag_list(krate: &Krate, frame: &mut ratatui::Frame, area: Rect) -> Result<(), Error> {
     {
-        let krate = &state.depot.store.0[ix];
         let tags: Vec<ListItem> = krate
             .info
             .tags
@@ -76,6 +79,23 @@ fn render_tag_list(
         frame.render_widget(tag_list, area);
         Ok(())
     }
+}
+
+fn render_description(krate: &Krate, frame: &mut ratatui::Frame, area: Rect) -> Result<(), Error> {
+    let description = &krate.info.description;
+    frame.render_widget(
+        Paragraph::new(description.clone())
+            .wrap(Wrap { trim: true })
+            .block(
+                Block::bordered()
+                    .border_type(BorderType::Rounded)
+                    .title("Description")
+                    .style(DEFAULT_STYLE),
+            ),
+        area,
+    );
+
+    Ok(())
 }
 
 impl Selectable for Catalog {

@@ -246,13 +246,13 @@ foo v0.1.0:
         assert_eq!(
             KrateInfo::parse(output).unwrap().1,
             KrateInfo {
-                tags: vec![
+                tags: Tags(vec![
                     "ratatui".to_string(),
                     "dictionary".to_string(),
                     "tui".to_string(),
                     "terminal".to_string(),
                     "thesaurus".to_string()
-                ],
+                ]),
                 description: "A terminal-based dictionary app.".to_string()
             }
         )
