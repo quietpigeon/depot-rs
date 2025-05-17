@@ -1,5 +1,3 @@
-use std::rc::Rc;
-
 use super::{View, start_view::Start};
 use crate::depot::Krate;
 use crate::ui::{DEFAULT_COLOR, DEFAULT_STYLE, HIGHLIGHT_STYLE};
@@ -9,6 +7,7 @@ use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
 use ratatui::style::Stylize;
 use ratatui::widgets::{Block, BorderType, List, ListItem, Paragraph, Wrap};
+use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct Catalog;
