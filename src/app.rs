@@ -1,4 +1,7 @@
-use crate::{depot::DepotState, keys::key_handler, ui::render};
+use crate::depot::DepotState;
+use crate::errors::Error;
+use crate::keys::key_handler;
+use crate::ui::{render, views::View};
 use color_eyre::Result;
 use crossterm::event::{Event, KeyEventKind};
 use ratatui::DefaultTerminal;
@@ -7,7 +10,8 @@ use ratatui::DefaultTerminal;
 #[derive(Debug, Default)]
 pub struct App {
     running: bool,
-    state: DepotState,
+    pub state: DepotState,
+    pub view: View,
 }
 
 impl App {
@@ -25,7 +29,7 @@ impl App {
     pub fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
         self.running = true;
         while self.running {
-            terminal.draw(|f| render(&mut self.state, f).unwrap())?;
+            terminal.draw(|f| render(&mut self.view, &mut self.state, f).unwrap())?;
             self.handle_crossterm_events()?;
         }
         Ok(())
@@ -35,10 +39,10 @@ impl App {
     ///
     /// If your application needs to perform work in between handling events, you can use the
     /// [`event::poll`] function to check if there are any events available with a timeout.
-    fn handle_crossterm_events(&mut self) -> Result<()> {
+    fn handle_crossterm_events(&mut self) -> Result<(), Error> {
         match crossterm::event::read()? {
             // it's important to check KeyEventKind::Press to avoid handling key release events
-            Event::Key(key) if key.kind == KeyEventKind::Press => key_handler(self, key),
+            Event::Key(key) if key.kind == KeyEventKind::Press => key_handler(self, key)?,
             _ => {}
         }
         Ok(())
