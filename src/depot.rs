@@ -7,6 +7,7 @@ use nom::character::complete::multispace0;
 use nom::character::complete::{multispace1, newline, space1};
 use nom::combinator::{map, opt};
 use nom::multi::separated_list0;
+use nom::sequence::preceded;
 use nom::{IResult, Parser, multi::separated_list1};
 use ratatui::widgets::ListState;
 use std::fmt::{self, Display};
@@ -101,7 +102,12 @@ pub struct KrateInfo {
     pub tags: Tags,
     pub latest_version: SemVer,
     pub license: String,
+    // Some crates have "unknown" as their Rust version.
     pub rust_version: Option<SemVer>,
+    pub documentation: String,
+    pub homepage: String,
+    pub repository: String,
+    pub crates_io: String,
 }
 
 impl KrateInfo {
@@ -126,7 +132,19 @@ impl KrateInfo {
         let (s, _) = newline(s)?;
         let (s, _) = ws(tag("rust-version:")).parse(s)?;
         let (s, rust_version) = opt(SemVer::parse).parse(s)?;
+        // When the Rust version is "unknown".
         let (s, _) = take_until("\n")(s)?;
+        let (s, _) = ws(tag("documentation:")).parse(s)?;
+        let (s, documentation) = map(take_until("\n"), String::from).parse(s)?;
+        let (s, homepage) = map(opt(preceded(ws(tag("homepage:")), take_until("\n"))), |d| {
+            d.unwrap_or("not available").to_string()
+        })
+        .parse(s)?;
+        let (s, _) = ws(tag("repository:")).parse(s)?;
+        let (s, repository) = map(take_until("\n"), String::from).parse(s)?;
+        let (s, _) = newline(s)?;
+        let (s, _) = ws(tag("crates.io:")).parse(s)?;
+        let (s, crates_io) = map(take_until("\n"), String::from).parse(s)?;
 
         let description = description.trim_end().to_string();
 
@@ -136,6 +154,10 @@ impl KrateInfo {
             latest_version,
             license,
             rust_version,
+            documentation,
+            homepage,
+            repository,
+            crates_io,
         };
 
         Ok((s, k))
@@ -313,7 +335,11 @@ foo v0.1.0:
                 ]),
                 latest_version: SemVer::new("0.1.2").unwrap(),
                 license: "MIT".to_string(),
-                rust_version: None
+                rust_version: None,
+                documentation: "https://docs.rs/cargo-thesaurust/0.1.2".to_string(),
+                homepage: "https://moreenh.me/pages/projects/cargo-thesaurust".to_string(),
+                repository: "https://github.com/quietpigeon/cargo-thesaurust".to_string(),
+                crates_io: "https://crates.io/crates/cargo-thesaurust/0.1.2".to_string()
             }
         )
     }
@@ -338,7 +364,11 @@ foo v0.1.0:
                 description: "A terminal-based dictionary app.".to_string(),
                 latest_version: SemVer::new("0.1.2").unwrap(),
                 license: "MIT".to_string(),
-                rust_version: None
+                rust_version: None,
+                documentation: "https://docs.rs/cargo-thesaurust/0.1.2".to_string(),
+                homepage: "https://moreenh.me/pages/projects/cargo-thesaurust".to_string(),
+                repository: "https://github.com/quietpigeon/cargo-thesaurust".to_string(),
+                crates_io: "https://crates.io/crates/cargo-thesaurust/0.1.2".to_string()
             }
         )
     }

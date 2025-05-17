@@ -29,7 +29,10 @@ impl Drawable for Catalog {
             .constraints(vec![
                 Constraint::Percentage(20),
                 Constraint::Percentage(10),
-                Constraint::Fill(2),
+                Constraint::Percentage(10),
+                Constraint::Percentage(10),
+                Constraint::Percentage(10),
+                Constraint::Fill(4),
             ])
             .split(layout[1]);
 
@@ -68,6 +71,9 @@ fn render_right(state: &mut DepotState, frame: &mut Frame, area: Rc<[Rect]>) -> 
             render_version(krate, frame, middle[0])?;
             render_license(krate, frame, middle[1])?;
             render_rust_version(krate, frame, middle[2])?;
+            render_documentation_url(krate, frame, area[2])?;
+            render_homepage(krate, frame, area[3])?;
+            render_repository_url(krate, frame, area[4])?;
         }
     }
 
@@ -146,6 +152,21 @@ fn render_rust_version(krate: &Krate, frame: &mut Frame, area: Rect) -> Result<(
     }
 
     Ok(())
+}
+
+fn render_documentation_url(krate: &Krate, frame: &mut Frame, area: Rect) -> Result<(), Error> {
+    let url = &krate.info.documentation;
+    render_text_with_title("Documentation", url, frame, area)
+}
+
+fn render_homepage(krate: &Krate, frame: &mut Frame, area: Rect) -> Result<(), Error> {
+    let url = &krate.info.homepage;
+    render_text_with_title("Homepage", url, frame, area)
+}
+
+fn render_repository_url(krate: &Krate, frame: &mut Frame, area: Rect) -> Result<(), Error> {
+    let url = &krate.info.repository;
+    render_text_with_title("Repository", url, frame, area)
 }
 
 fn render_text_with_title(
