@@ -12,9 +12,6 @@ pub enum Error {
     #[error("failed to parse cargo command stdout: {0}")]
     Parser(nom::Err<nom::error::Error<String>>),
 
-    #[error("krate does not exist")]
-    KrateNotFound,
-
     #[error("failed to create text")]
     DisplayFmt(#[from] std::fmt::Error),
 }

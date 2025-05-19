@@ -10,13 +10,16 @@ use nom::multi::separated_list0;
 use nom::sequence::preceded;
 use nom::{IResult, Parser, multi::separated_list1};
 use ratatui::widgets::ListState;
-use std::fmt::{self, Display};
+use std::fmt::Display;
 use versions::SemVer;
 
 #[derive(Debug)]
 pub struct DepotState {
     pub depot: Depot,
     pub list_state: ListState,
+    // Status of fetching crate info.
+    pub info_state: f64,
+    pub synced: bool,
 }
 
 #[derive(Debug, Default)]
@@ -29,17 +32,27 @@ impl Default for DepotState {
     fn default() -> Self {
         let depot = Depot::get().expect("failed to initialize `DepotState`");
         let list_state = ListState::default();
-        Self { depot, list_state }
+        let info_state = f64::default();
+        let synced = false;
+        Self {
+            depot,
+            list_state,
+            info_state,
+            synced,
+        }
     }
 }
 
 impl DepotState {
-    pub fn sync_krate(&mut self, name: &str) -> Result<(), Error> {
-        if let Some(idx) = self.depot.store.0.iter().position(|k| k.name == name) {
-            self.depot.store.0[idx].info = KrateInfo::get(name)?;
-        } else {
-            return Err(Error::KrateNotFound);
+    pub fn sync(&mut self) -> Result<(), Error> {
+        for krate in &mut self.depot.store.0 {
+            krate.info = KrateInfo::get(&krate.name)?;
+            KrateInfo::verify(&krate.info).map(|_| {
+                self.info_state += 1.0 / self.depot.crate_count as f64;
+                self.info_state = self.info_state.min(1.0);
+            })?;
         }
+        self.synced = true;
 
         Ok(())
     }
@@ -59,7 +72,7 @@ impl Depot {
 pub struct Krates(pub Vec<Krate>);
 
 impl Krates {
-    pub fn parse(s: &str) -> IResult<&str, Self> {
+    fn parse(s: &str) -> IResult<&str, Self> {
         let (s, krates) = separated_list1(newline, Krate::parse).parse(s)?;
         let k = Self(krates);
 
@@ -76,7 +89,7 @@ pub struct Krate {
 }
 
 impl Krate {
-    pub fn parse(s: &str) -> IResult<&str, Self> {
+    fn parse(s: &str) -> IResult<&str, Self> {
         let (s, name) = map(alphanumeric1_with_hyphen, String::from).parse(s)?;
         let (s, _) = multispace1(s)?;
         let (s, _) = char('v')(s)?;
@@ -104,6 +117,7 @@ pub struct KrateInfo {
     pub license: String,
     // Some crates have "unknown" as their Rust version.
     pub rust_version: Option<SemVer>,
+    // NOTE: Let's keep the urls as strings for now as it's easier to parse and display.
     pub documentation: String,
     pub homepage: String,
     pub repository: String,
@@ -111,14 +125,20 @@ pub struct KrateInfo {
 }
 
 impl KrateInfo {
-    fn get(name: &str) -> Result<Self, Error> {
+    /// Get the info of the given crate.
+    pub fn get(name: &str) -> Result<Self, Error> {
         let s = search_crate(name)?;
         let info = Self::parse(&s)?.1;
 
         Ok(info)
     }
 
-    pub fn parse(s: &str) -> IResult<&str, Self> {
+    /// Verify if the crate info has been fetched.
+    pub fn verify(&self) -> Result<bool, Error> {
+        Ok(!self.description.is_empty() && !self.crates_io.is_empty())
+    }
+
+    fn parse(s: &str) -> IResult<&str, Self> {
         let (s, _) = alphanumeric1_with_hyphen(s)?;
         let (s, _) = multispace0(s)?;
         let (s, tags) = map(opt(Tags::parse), |t| t.unwrap_or_default()).parse(s)?;
@@ -168,7 +188,7 @@ impl KrateInfo {
 pub struct Tags(pub Vec<String>);
 
 impl Display for Tags {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let v: &Vec<String> = &self.0.iter().map(|s| format!("#{s}")).collect();
         let s = v.join(" ");
         write!(f, "{s}")
@@ -177,7 +197,7 @@ impl Display for Tags {
 
 impl Tags {
     /// > #foo #baz #bar
-    pub fn parse(s: &str) -> IResult<&str, Self> {
+    fn parse(s: &str) -> IResult<&str, Self> {
         let (s, _) = char('#')(s)?;
         let (s, t) = map(
             separated_list0(char('#'), ws2(alphanumeric1_with_hyphen)),
@@ -199,6 +219,24 @@ fn parse_binary(s: &str) -> IResult<&str, String> {
 
 #[cfg(test)]
 mod tests {
+    use super::KrateInfo;
+
+    #[test]
+    fn verify_info() {
+        assert!(
+            KrateInfo::verify(&KrateInfo {
+                description: "foo".to_string(),
+                crates_io: "foo".to_string(),
+                ..Default::default()
+            })
+            .unwrap()
+        );
+        assert!(!KrateInfo::verify(&KrateInfo::default()).unwrap())
+    }
+}
+
+#[cfg(test)]
+mod parser_tests {
     use super::{Krate, KrateInfo, Krates, Tags, parse_binary};
     use crate::parser::alphanumeric1_with_hyphen;
     use pretty_assertions::assert_eq;
@@ -339,7 +377,7 @@ foo v0.1.0:
                 documentation: "https://docs.rs/cargo-thesaurust/0.1.2".to_string(),
                 homepage: "https://moreenh.me/pages/projects/cargo-thesaurust".to_string(),
                 repository: "https://github.com/quietpigeon/cargo-thesaurust".to_string(),
-                crates_io: "https://crates.io/crates/cargo-thesaurust/0.1.2".to_string()
+                crates_io: "https://crates.io/crates/cargo-thesaurust/0.1.2".to_string(),
             }
         )
     }
@@ -368,7 +406,7 @@ foo v0.1.0:
                 documentation: "https://docs.rs/cargo-thesaurust/0.1.2".to_string(),
                 homepage: "https://moreenh.me/pages/projects/cargo-thesaurust".to_string(),
                 repository: "https://github.com/quietpigeon/cargo-thesaurust".to_string(),
-                crates_io: "https://crates.io/crates/cargo-thesaurust/0.1.2".to_string()
+                crates_io: "https://crates.io/crates/cargo-thesaurust/0.1.2".to_string(),
             }
         )
     }

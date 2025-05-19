@@ -5,6 +5,8 @@ use crate::ui::{render, views::View};
 use color_eyre::Result;
 use crossterm::event::{Event, KeyEventKind};
 use ratatui::DefaultTerminal;
+use std::ops::Not;
+use std::time::Duration;
 
 /// The main application which holds the state and logic of the application.
 #[derive(Debug, Default)]
@@ -31,7 +33,12 @@ impl App {
         while self.running {
             terminal.draw(|f| render(&mut self.view, &mut self.state, f).unwrap())?;
             self.handle_crossterm_events()?;
+
+            if self.state.synced.not() {
+                self.state.sync()?;
+            }
         }
+
         Ok(())
     }
 
@@ -40,10 +47,12 @@ impl App {
     /// If your application needs to perform work in between handling events, you can use the
     /// [`event::poll`] function to check if there are any events available with a timeout.
     fn handle_crossterm_events(&mut self) -> Result<(), Error> {
-        match crossterm::event::read()? {
-            // it's important to check KeyEventKind::Press to avoid handling key release events
-            Event::Key(key) if key.kind == KeyEventKind::Press => key_handler(self, key)?,
-            _ => {}
+        if crossterm::event::poll(Duration::from_millis(50))? {
+            match crossterm::event::read()? {
+                // it's important to check KeyEventKind::Press to avoid handling key release events
+                Event::Key(key) if key.kind == KeyEventKind::Press => key_handler(self, key)?,
+                _ => {}
+            }
         }
         Ok(())
     }
