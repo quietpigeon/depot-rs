@@ -7,6 +7,7 @@ use views::catalog_view::Catalog;
 use views::start_view::Start;
 
 mod banner;
+mod components;
 pub mod views;
 
 const DEFAULT_COLOR: Color = Color::Yellow;

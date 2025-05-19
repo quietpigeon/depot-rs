@@ -2,6 +2,7 @@ use super::{View, start_view::Start};
 use crate::depot::Krate;
 use crate::ui::{DEFAULT_COLOR, DEFAULT_STYLE, HIGHLIGHT_STYLE};
 use crate::{depot::DepotState, errors::Error, keys::Selectable, ui::Drawable};
+use apply::Also;
 use crossterm::event::KeyCode;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
@@ -194,9 +195,13 @@ impl Selectable for Catalog {
     ) -> Result<(), crate::errors::Error> {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc | KeyCode::Char('q')) => app.view = View::StartView(Start),
-            (_, KeyCode::Char('j')) => select_next(&mut app.state)?,
-            (_, KeyCode::Char('k')) => select_previous(&mut app.state)?,
-            (_, KeyCode::Enter) => select_crate(&mut app.state)?,
+            // Here, we assume all of the crate info has been fetched.
+            (_, KeyCode::Char('j')) => select_next(&mut app.state)?.also(|_| {
+                let _ = select_crate(&mut app.state);
+            }),
+            (_, KeyCode::Char('k')) => select_previous(&mut app.state)?.also(|_| {
+                let _ = select_crate(&mut app.state);
+            }),
             _ => {}
         }
         Ok(())

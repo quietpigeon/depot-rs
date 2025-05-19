@@ -1,6 +1,7 @@
 use super::catalog_view::Catalog;
 use super::{Drawable, View, banner, center};
 use crate::ui::DEFAULT_STYLE;
+use crate::ui::components::progress_bar;
 use crate::{app::App, depot::DepotState, errors::Error, keys::Selectable};
 use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::Frame;
@@ -16,7 +17,11 @@ impl Drawable for Start {
     fn render(state: &mut DepotState, frame: &mut Frame) -> Result<(), Error> {
         let layout = Layout::default()
             .direction(ratatui::layout::Direction::Vertical)
-            .constraints(vec![Constraint::Percentage(50), Constraint::Fill(1)])
+            .constraints(vec![
+                Constraint::Percentage(50),
+                Constraint::Percentage(10),
+                Constraint::Percentage(10),
+            ])
             .split(frame.area());
 
         let banner = Text::raw(banner::BANNER);
@@ -40,6 +45,8 @@ impl Drawable for Start {
             layout[1],
         );
 
+        frame.render_widget(progress_bar::new(state)?, layout[2]);
+
         Ok(())
     }
 }
@@ -49,7 +56,11 @@ impl Selectable for Start {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc | KeyCode::Char('q'))
             | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => app.quit(),
-            (_, KeyCode::Char('c')) => app.view = View::CatalogView(Catalog),
+            (_, KeyCode::Char('c')) => {
+                if app.state.synced {
+                    app.view = View::CatalogView(Catalog)
+                }
+            }
             _ => {}
         }
 
