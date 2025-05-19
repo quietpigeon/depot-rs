@@ -45,29 +45,14 @@ impl Default for DepotState {
 
 impl DepotState {
     pub fn sync(&mut self) -> Result<(), Error> {
-        self.depot.store.0.iter().for_each(|k| {
-            let _ = KrateInfo::get(&k.name)
-                .and_then(|_| KrateInfo::verify(&k.info))
-                .map(|_| {
-                    self.info_state += 1.0 / self.depot.crate_count as f64;
-                    self.info_state = self.info_state.min(1.0);
-                });
-        });
-        self.synced = true;
-
-        Ok(())
-    }
-
-    pub fn sync_krate(&mut self, name: &str) -> Result<(), Error> {
-        if let Some(idx) = self.depot.store.0.iter().position(|k| k.name == name) {
-            let krate = &mut self.depot.store.0[idx];
-            krate.info = KrateInfo::get(name)?;
-            if KrateInfo::verify(&krate.info)? {
-                self.info_state += (1 / self.depot.crate_count) as f64;
-            }
-        } else {
-            return Err(Error::KrateNotFound);
+        for krate in &mut self.depot.store.0 {
+            krate.info = KrateInfo::get(&krate.name)?;
+            KrateInfo::verify(&krate.info).map(|_| {
+                self.info_state += 1.0 / self.depot.crate_count as f64;
+                self.info_state = self.info_state.min(1.0);
+            })?;
         }
+        self.synced = true;
 
         Ok(())
     }

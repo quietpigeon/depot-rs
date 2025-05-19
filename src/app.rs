@@ -1,6 +1,3 @@
-use std::ops::Not;
-use std::time::Duration;
-
 use crate::depot::DepotState;
 use crate::errors::Error;
 use crate::keys::key_handler;
@@ -8,6 +5,8 @@ use crate::ui::{render, views::View};
 use color_eyre::Result;
 use crossterm::event::{Event, KeyEventKind};
 use ratatui::DefaultTerminal;
+use std::ops::Not;
+use std::time::Duration;
 
 /// The main application which holds the state and logic of the application.
 #[derive(Debug, Default)]

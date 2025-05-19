@@ -2,7 +2,6 @@ use super::{View, start_view::Start};
 use crate::depot::Krate;
 use crate::ui::{DEFAULT_COLOR, DEFAULT_STYLE, HIGHLIGHT_STYLE};
 use crate::{depot::DepotState, errors::Error, keys::Selectable, ui::Drawable};
-use apply::Also;
 use crossterm::event::KeyCode;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Rect};
@@ -196,12 +195,8 @@ impl Selectable for Catalog {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc | KeyCode::Char('q')) => app.view = View::StartView(Start),
             // Here, we assume all of the crate info has been fetched.
-            (_, KeyCode::Char('j')) => select_next(&mut app.state)?.also(|_| {
-                let _ = select_crate(&mut app.state);
-            }),
-            (_, KeyCode::Char('k')) => select_previous(&mut app.state)?.also(|_| {
-                let _ = select_crate(&mut app.state);
-            }),
+            (_, KeyCode::Char('j')) => select_next(&mut app.state)?,
+            (_, KeyCode::Char('k')) => select_previous(&mut app.state)?,
             _ => {}
         }
         Ok(())
@@ -225,16 +220,5 @@ fn select_next(state: &mut DepotState) -> Result<(), Error> {
 
 fn select_previous(state: &mut DepotState) -> Result<(), Error> {
     state.list_state.select_previous();
-    Ok(())
-}
-
-fn select_crate(state: &mut DepotState) -> Result<(), Error> {
-    // NOTE: This is a safe unwrap.
-    let i = state.list_state.selected().unwrap();
-    let krate = &state.depot.store.0[i];
-
-    // TODO: Might sideload this somewhere to reduce loading time.
-    state.sync_krate(krate.name.clone().as_str())?;
-
     Ok(())
 }
