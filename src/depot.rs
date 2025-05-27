@@ -18,7 +18,7 @@ pub struct DepotState {
     pub depot: Depot,
     pub list_state: ListState,
     // Status of fetching crate info.
-    pub info_state: f64,
+    pub sync_status: i64,
     pub synced: bool,
 }
 
@@ -32,12 +32,13 @@ impl Default for DepotState {
     fn default() -> Self {
         let depot = Depot::get().expect("failed to initialize `DepotState`");
         let list_state = ListState::default();
-        let info_state = f64::default();
+        let sync_status = i64::default();
         let synced = false;
+
         Self {
             depot,
             list_state,
-            info_state,
+            sync_status,
             synced,
         }
     }
@@ -48,11 +49,10 @@ impl DepotState {
         for krate in &mut self.depot.store.0 {
             krate.info = KrateInfo::get(&krate.name)?;
             KrateInfo::verify(&krate.info).map(|_| {
-                self.info_state += 1.0 / self.depot.crate_count as f64;
-                self.info_state = self.info_state.min(1.0);
+                self.sync_status += 1;
+                self.synced = self.sync_status == self.depot.crate_count
             })?;
         }
-        self.synced = true;
 
         Ok(())
     }

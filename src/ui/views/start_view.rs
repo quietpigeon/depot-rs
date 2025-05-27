@@ -1,3 +1,5 @@
+use std::ops::Not;
+
 use super::catalog_view::Catalog;
 use super::{Drawable, View, banner, center};
 use crate::ui::DEFAULT_STYLE;
@@ -45,7 +47,10 @@ impl Drawable for Start {
             layout[1],
         );
 
-        frame.render_widget(progress_bar::new(state)?, layout[2]);
+        if state.synced.not() {
+            // TODO: Use progress bar instead of static text.
+            frame.render_widget(progress_bar::new()?, layout[2]);
+        }
 
         Ok(())
     }
