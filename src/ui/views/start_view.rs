@@ -3,7 +3,7 @@ use std::ops::Not;
 use super::catalog_view::Catalog;
 use super::{Drawable, View, banner, center};
 use crate::ui::DEFAULT_STYLE;
-use crate::ui::components::progress_bar;
+use crate::ui::components::{progress_bar, select_menu};
 use crate::{app::App, depot::DepotState, errors::Error, keys::Selectable};
 use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::Frame;
@@ -23,6 +23,7 @@ impl Drawable for Start {
                 Constraint::Percentage(50),
                 Constraint::Percentage(10),
                 Constraint::Percentage(10),
+                Constraint::Percentage(30),
             ])
             .split(frame.area());
 
@@ -50,6 +51,8 @@ impl Drawable for Start {
         if state.synced.not() {
             // TODO: Use progress bar instead of static text.
             frame.render_widget(progress_bar::new()?, layout[2]);
+        } else {
+            frame.render_widget(select_menu::new()?, layout[2]);
         }
 
         Ok(())
