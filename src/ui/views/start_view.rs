@@ -52,6 +52,17 @@ impl Drawable for Start {
             // TODO: Use progress bar instead of static text.
             frame.render_widget(progress_bar::new()?, layout[2]);
         } else {
+            frame.render_widget(
+                Paragraph::new(format!(
+                    "You have {} crates installed.\n\n{} crates are outdated.",
+                    state.depot.crate_count,
+                    state.depot.outdated_krate_count()?,
+                ))
+                .style(DEFAULT_STYLE)
+                .centered(),
+                layout[1],
+            );
+
             frame.render_widget(select_menu::new()?, layout[2]);
         }
 

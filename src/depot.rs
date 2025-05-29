@@ -47,11 +47,9 @@ impl Default for DepotState {
 impl DepotState {
     pub fn sync(&mut self) -> Result<(), Error> {
         for krate in &mut self.depot.store.0 {
-            krate.info = KrateInfo::get(&krate.name)?;
-            KrateInfo::verify(&krate.info).map(|_| {
-                self.sync_status += 1;
-                self.synced = self.sync_status == self.depot.crate_count
-            })?;
+            Krate::pack(krate)?;
+            self.sync_status += 1;
+            self.synced = self.sync_status == self.depot.crate_count;
         }
 
         Ok(())
@@ -59,6 +57,7 @@ impl DepotState {
 }
 
 impl Depot {
+    /// Obtain the list of installed crates.
     pub fn get() -> Result<Self, Error> {
         let output = list_crates()?;
         let store = Krates::parse(&output)?.1;
@@ -66,30 +65,58 @@ impl Depot {
 
         Ok(Self { store, crate_count })
     }
+
+    /// Which one of you is outdated?
+    pub fn get_outdated_krates(&self) -> Result<Krates, Error> {
+        let k = self
+            .store
+            .0
+            .clone()
+            .into_iter()
+            .filter(|k| !k.is_latest)
+            .collect();
+
+        Ok(Krates(k))
+    }
+
+    /// Shorthand for getting the number of outdated krates.
+    pub fn outdated_krate_count(&self) -> Result<usize, Error> {
+        Ok(self.get_outdated_krates()?.0.len())
+    }
 }
 
 #[derive(Debug, Default, PartialEq, Eq)]
 pub struct Krates(pub Vec<Krate>);
 
 impl Krates {
-    fn parse(s: &str) -> IResult<&str, Self> {
+    fn parse(s: &str) -> IResult<&str, Krates> {
         let (s, krates) = separated_list1(newline, Krate::parse).parse(s)?;
-        let k = Self(krates);
+        let k = Krates(krates);
 
         Ok((s, k))
     }
 }
 
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Krate {
     pub name: String,
     pub version: SemVer,
     pub binaries: Vec<String>,
     pub info: KrateInfo,
+    pub is_latest: bool,
 }
 
 impl Krate {
-    fn parse(s: &str) -> IResult<&str, Self> {
+    fn pack(&mut self) -> Result<(), Error> {
+        self.info = KrateInfo::get(&self.name)?;
+        self.is_latest = self.info.latest_version == self.version;
+
+        Ok(())
+    }
+
+    /// Retrieves information about the crate.
+    /// Does not contain latest information from crates.io.
+    fn parse(s: &str) -> IResult<&str, Krate> {
         let (s, name) = map(alphanumeric1_with_hyphen, String::from).parse(s)?;
         let (s, _) = multispace1(s)?;
         let (s, _) = char('v')(s)?;
@@ -98,7 +125,7 @@ impl Krate {
         let (s, _) = newline(s)?;
         let (s, binaries) = separated_list1(newline, parse_binary).parse(s)?;
 
-        let k = Self {
+        let k = Krate {
             name,
             version,
             binaries,
@@ -109,7 +136,8 @@ impl Krate {
     }
 }
 
-#[derive(Debug, Default, PartialEq, Eq)]
+/// Contains latest information about the crate from crates.io.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct KrateInfo {
     pub description: String,
     pub tags: Tags,
@@ -126,16 +154,11 @@ pub struct KrateInfo {
 
 impl KrateInfo {
     /// Get the info of the given crate.
-    pub fn get(name: &str) -> Result<Self, Error> {
+    pub fn get(name: &str) -> Result<KrateInfo, Error> {
         let s = search_crate(name)?;
         let info = Self::parse(&s)?.1;
 
         Ok(info)
-    }
-
-    /// Verify if the crate info has been fetched.
-    pub fn verify(&self) -> Result<bool, Error> {
-        Ok(!self.description.is_empty() && !self.crates_io.is_empty())
     }
 
     fn parse(s: &str) -> IResult<&str, Self> {
@@ -184,7 +207,7 @@ impl KrateInfo {
     }
 }
 
-#[derive(Debug, Default, PartialEq, Eq)]
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct Tags(pub Vec<String>);
 
 impl Display for Tags {
@@ -215,24 +238,6 @@ fn parse_binary(s: &str) -> IResult<&str, String> {
     let (s, b) = map(alphanumeric1_with_hyphen, String::from).parse(s)?;
 
     Ok((s, b))
-}
-
-#[cfg(test)]
-mod tests {
-    use super::KrateInfo;
-
-    #[test]
-    fn verify_info() {
-        assert!(
-            KrateInfo::verify(&KrateInfo {
-                description: "foo".to_string(),
-                crates_io: "foo".to_string(),
-                ..Default::default()
-            })
-            .unwrap()
-        );
-        assert!(!KrateInfo::verify(&KrateInfo::default()).unwrap())
-    }
 }
 
 #[cfg(test)]
