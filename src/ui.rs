@@ -5,6 +5,7 @@ use ratatui::style::{Color, Style};
 use views::View;
 use views::catalog_view::Catalog;
 use views::start_view::Start;
+use views::update_view::Update;
 
 mod banner;
 mod components;
@@ -19,6 +20,7 @@ pub fn render(view: &mut View, state: &mut DepotState, frame: &mut Frame) -> Res
     match view {
         View::StartView(_) => Start::render(state, frame)?,
         View::CatalogView(_) => Catalog::render(state, frame)?,
+        View::UpdateView(_) => Update::render(state, frame)?,
     }
 
     Ok(())

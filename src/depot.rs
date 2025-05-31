@@ -17,6 +17,7 @@ use versions::SemVer;
 pub struct DepotState {
     pub depot: Depot,
     pub list_state: ListState,
+    pub update_list_state: ListState,
     // Status of fetching crate info.
     pub sync_status: i64,
     pub synced: bool,
@@ -32,12 +33,14 @@ impl Default for DepotState {
     fn default() -> Self {
         let depot = Depot::get().expect("failed to initialize `DepotState`");
         let list_state = ListState::default();
+        let update_list_state = ListState::default();
         let sync_status = i64::default();
         let synced = false;
 
         Self {
             depot,
             list_state,
+            update_list_state,
             sync_status,
             synced,
         }

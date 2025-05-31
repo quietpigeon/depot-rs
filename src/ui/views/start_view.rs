@@ -1,6 +1,7 @@
 use std::ops::Not;
 
 use super::catalog_view::Catalog;
+use super::update_view::Update;
 use super::{Drawable, View, banner, center};
 use crate::ui::DEFAULT_STYLE;
 use crate::ui::components::{progress_bar, select_menu};
@@ -23,7 +24,8 @@ impl Drawable for Start {
                 Constraint::Percentage(50),
                 Constraint::Percentage(10),
                 Constraint::Percentage(10),
-                Constraint::Percentage(30),
+                Constraint::Percentage(5),
+                Constraint::Percentage(25),
             ])
             .split(frame.area());
 
@@ -63,7 +65,7 @@ impl Drawable for Start {
                 layout[1],
             );
 
-            frame.render_widget(select_menu::new()?, layout[2]);
+            frame.render_widget(select_menu::new()?, layout[3]);
         }
 
         Ok(())
@@ -80,6 +82,7 @@ impl Selectable for Start {
                     app.view = View::CatalogView(Catalog)
                 }
             }
+            (_, KeyCode::Char('u')) => app.view = View::UpdateView(Update),
             _ => {}
         }
 
