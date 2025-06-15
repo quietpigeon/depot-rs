@@ -186,9 +186,13 @@ impl KrateInfo {
             d.unwrap_or("not available").to_string()
         })
         .parse(s)?;
-        let (s, _) = ws(tag("repository:")).parse(s)?;
-        let (s, repository) = map(take_until("\n"), String::from).parse(s)?;
-        let (s, _) = newline(s)?;
+        let (s, _) = multispace0(s)?;
+        let (s, repository) = map(
+            opt(preceded(ws(tag("repository:")), take_until("\n"))),
+            |d| d.unwrap_or("not available").to_string(),
+        )
+        .parse(s)?;
+        let (s, _) = multispace0(s)?;
         let (s, _) = ws(tag("crates.io:")).parse(s)?;
         let (s, crates_io) = map(take_until("\n"), String::from).parse(s)?;
 
