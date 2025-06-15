@@ -4,13 +4,14 @@ use crate::ui::{DEFAULT_COLOR, DEFAULT_STYLE, HIGHLIGHT_STYLE};
 use crate::{depot::DepotState, errors::Error, keys::Selectable, ui::Drawable};
 use crossterm::event::KeyCode;
 use ratatui::Frame;
-use ratatui::layout::{Constraint, Layout, Rect};
+use ratatui::layout::{Constraint, Layout, Margin, Rect};
 use ratatui::style::Stylize;
 use ratatui::widgets::{Block, BorderType, List, ListItem, Paragraph, Wrap};
 use std::rc::Rc;
 
 #[derive(Debug)]
 pub struct Catalog;
+
 impl Drawable for Catalog {
     fn render(
         state: &mut crate::depot::DepotState,
@@ -19,7 +20,7 @@ impl Drawable for Catalog {
         let layout = Layout::default()
             .direction(ratatui::layout::Direction::Horizontal)
             .constraints(vec![Constraint::Percentage(30), Constraint::Fill(1)])
-            .split(frame.area());
+            .split(frame.area().inner(Margin::new(5, 5)));
         let left = Layout::default()
             .direction(ratatui::layout::Direction::Vertical)
             .constraints(vec![Constraint::Percentage(70), Constraint::Fill(1)])
@@ -27,7 +28,7 @@ impl Drawable for Catalog {
         let right = Layout::default()
             .direction(ratatui::layout::Direction::Vertical)
             .constraints(vec![
-                Constraint::Percentage(20),
+                Constraint::Percentage(15),
                 Constraint::Percentage(10),
                 Constraint::Percentage(10),
                 Constraint::Percentage(10),
@@ -188,12 +189,12 @@ fn render_text_with_title(
 }
 
 impl Selectable for Catalog {
-    fn select(
+    async fn select(
         app: &mut crate::app::App,
         key: &crossterm::event::KeyEvent,
     ) -> Result<(), crate::errors::Error> {
         match (key.modifiers, key.code) {
-            (_, KeyCode::Esc | KeyCode::Char('q')) => app.view = View::StartView(Start),
+            (_, KeyCode::Esc | KeyCode::Char('q')) => app.view = View::Start(Start),
             // Here, we assume all of the crate info has been fetched.
             (_, KeyCode::Char('j')) => select_next(&mut app.state)?,
             (_, KeyCode::Char('k')) => select_previous(&mut app.state)?,

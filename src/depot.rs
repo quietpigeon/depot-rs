@@ -1,4 +1,4 @@
-use crate::commands::{list_crates, search_crate};
+use crate::commands::{install_crate, list_crates, search_crate};
 use crate::errors::Error;
 use crate::parser::{alphanumeric1_with_hyphen, ws, ws2};
 use nom::bytes::complete::{tag, take_until};
@@ -17,6 +17,7 @@ use versions::SemVer;
 pub struct DepotState {
     pub depot: Depot,
     pub list_state: ListState,
+    pub update_list_state: ListState,
     // Status of fetching crate info.
     pub sync_status: i64,
     pub synced: bool,
@@ -32,12 +33,14 @@ impl Default for DepotState {
     fn default() -> Self {
         let depot = Depot::get().expect("failed to initialize `DepotState`");
         let list_state = ListState::default();
+        let update_list_state = ListState::default();
         let sync_status = i64::default();
         let synced = false;
 
         Self {
             depot,
             list_state,
+            update_list_state,
             sync_status,
             synced,
         }
@@ -47,9 +50,17 @@ impl Default for DepotState {
 impl DepotState {
     pub fn sync(&mut self) -> Result<(), Error> {
         for krate in &mut self.depot.store.0 {
-            Krate::pack(krate)?;
+            krate.info = KrateInfo::get(&krate.name)?;
             self.sync_status += 1;
             self.synced = self.sync_status == self.depot.crate_count;
+        }
+
+        Ok(())
+    }
+
+    pub fn sync_krate(&mut self, name: &str) -> Result<(), Error> {
+        if let Some(k) = self.depot.store.0.iter_mut().find(|k| k.name == name) {
+            k.update_version()?;
         }
 
         Ok(())
@@ -73,7 +84,7 @@ impl Depot {
             .0
             .clone()
             .into_iter()
-            .filter(|k| !k.is_latest)
+            .filter(|k| !k.is_latest())
             .collect();
 
         Ok(Krates(k))
@@ -103,15 +114,24 @@ pub struct Krate {
     pub version: SemVer,
     pub binaries: Vec<String>,
     pub info: KrateInfo,
-    pub is_latest: bool,
 }
 
 impl Krate {
-    fn pack(&mut self) -> Result<(), Error> {
-        self.info = KrateInfo::get(&self.name)?;
-        self.is_latest = self.info.latest_version == self.version;
+    pub fn is_latest(&self) -> bool {
+        self.info.latest_version == self.version
+    }
+
+    pub fn update_version(&mut self) -> Result<(), Error> {
+        let name = &self.name.clone();
+        let s = list_crates()?;
+        let v = parse_ver(&s, name)?.1;
+        self.version = v;
 
         Ok(())
+    }
+
+    pub async fn update(&self) -> Result<(), Error> {
+        install_crate(&self.name).await
     }
 
     /// Retrieves information about the crate.
@@ -134,6 +154,17 @@ impl Krate {
 
         Ok((s, k))
     }
+}
+
+fn parse_ver<'a>(s: &'a str, n: &'a str) -> IResult<&'a str, SemVer> {
+    let (s, _) = take_until(n)(s)?;
+    let (s, _) = multispace0(s)?;
+    let (s, _) = tag(n)(s)?;
+    let (s, _) = multispace1(s)?;
+    let (s, _) = char('v')(s)?;
+    let (s, v) = SemVer::parse(s)?;
+
+    Ok((s, v))
 }
 
 /// Contains latest information about the crate from crates.io.
@@ -183,9 +214,13 @@ impl KrateInfo {
             d.unwrap_or("not available").to_string()
         })
         .parse(s)?;
-        let (s, _) = ws(tag("repository:")).parse(s)?;
-        let (s, repository) = map(take_until("\n"), String::from).parse(s)?;
-        let (s, _) = newline(s)?;
+        let (s, _) = multispace0(s)?;
+        let (s, repository) = map(
+            opt(preceded(ws(tag("repository:")), take_until("\n"))),
+            |d| d.unwrap_or("not available").to_string(),
+        )
+        .parse(s)?;
+        let (s, _) = multispace0(s)?;
         let (s, _) = ws(tag("crates.io:")).parse(s)?;
         let (s, crates_io) = map(take_until("\n"), String::from).parse(s)?;
 
@@ -243,7 +278,7 @@ fn parse_binary(s: &str) -> IResult<&str, String> {
 #[cfg(test)]
 mod parser_tests {
     use super::{Krate, KrateInfo, Krates, Tags, parse_binary};
-    use crate::parser::alphanumeric1_with_hyphen;
+    use crate::{depot::parse_ver, parser::alphanumeric1_with_hyphen};
     use pretty_assertions::assert_eq;
     use versions::SemVer;
 
@@ -333,6 +368,16 @@ foo v0.1.0:
         assert!(Krate::parse(s2).is_err(),);
         assert!(Krate::parse(s3).is_err(),);
         assert!(Krate::parse(s4).is_err(),);
+    }
+
+    #[test]
+    fn parse_krate_version() {
+        let s = " fooo foooo fooooo cargo-thesaurust v0.1.2:";
+
+        assert_eq!(
+            parse_ver(s, "cargo-thesaurust").unwrap().1,
+            SemVer::parse("0.1.2").unwrap().1
+        )
     }
 
     #[test]

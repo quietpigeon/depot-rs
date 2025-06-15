@@ -5,6 +5,7 @@ use ratatui::style::{Color, Style};
 use views::View;
 use views::catalog_view::Catalog;
 use views::start_view::Start;
+use views::update_view::Update;
 
 mod banner;
 mod components;
@@ -17,8 +18,9 @@ const HIGHLIGHT_STYLE: Style = Style::new().bg(Color::Black);
 /// Renders the user interface.
 pub fn render(view: &mut View, state: &mut DepotState, frame: &mut Frame) -> Result<(), Error> {
     match view {
-        View::StartView(_) => Start::render(state, frame)?,
-        View::CatalogView(_) => Catalog::render(state, frame)?,
+        View::Start(_) => Start::render(state, frame)?,
+        View::Catalog(_) => Catalog::render(state, frame)?,
+        View::Update(_) => Update::render(state, frame)?,
     }
 
     Ok(())

@@ -1,6 +1,5 @@
-use std::ops::Not;
-
 use super::catalog_view::Catalog;
+use super::update_view::Update;
 use super::{Drawable, View, banner, center};
 use crate::ui::DEFAULT_STYLE;
 use crate::ui::components::{progress_bar, select_menu};
@@ -11,6 +10,7 @@ use ratatui::layout::Constraint;
 use ratatui::layout::Layout;
 use ratatui::text::Text;
 use ratatui::widgets::Paragraph;
+use std::ops::Not;
 
 #[derive(Debug)]
 pub struct Start;
@@ -23,7 +23,8 @@ impl Drawable for Start {
                 Constraint::Percentage(50),
                 Constraint::Percentage(10),
                 Constraint::Percentage(10),
-                Constraint::Percentage(30),
+                Constraint::Percentage(5),
+                Constraint::Percentage(25),
             ])
             .split(frame.area());
 
@@ -63,7 +64,7 @@ impl Drawable for Start {
                 layout[1],
             );
 
-            frame.render_widget(select_menu::new()?, layout[2]);
+            frame.render_widget(select_menu::new()?, layout[3]);
         }
 
         Ok(())
@@ -71,15 +72,16 @@ impl Drawable for Start {
 }
 
 impl Selectable for Start {
-    fn select(app: &mut App, key: &crossterm::event::KeyEvent) -> Result<(), Error> {
+    async fn select(app: &mut App, key: &crossterm::event::KeyEvent) -> Result<(), Error> {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc | KeyCode::Char('q'))
             | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => app.quit(),
             (_, KeyCode::Char('c')) => {
                 if app.state.synced {
-                    app.view = View::CatalogView(Catalog)
+                    app.view = View::Catalog(Catalog)
                 }
             }
+            (_, KeyCode::Char('u')) => app.view = View::Update(Update),
             _ => {}
         }
 
