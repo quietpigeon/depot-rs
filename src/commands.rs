@@ -26,3 +26,12 @@ pub fn search_crate(c: &str) -> Result<String, Error> {
 
     Ok(stdout)
 }
+
+pub async fn install_crate(c: &str) -> Result<(), Error> {
+    Command::new("cargo")
+        .arg("install")
+        .arg(c)
+        .arg("--locked")
+        .output()?;
+    Ok(())
+}

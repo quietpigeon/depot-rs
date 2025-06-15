@@ -189,12 +189,12 @@ fn render_text_with_title(
 }
 
 impl Selectable for Catalog {
-    fn select(
+    async fn select(
         app: &mut crate::app::App,
         key: &crossterm::event::KeyEvent,
     ) -> Result<(), crate::errors::Error> {
         match (key.modifiers, key.code) {
-            (_, KeyCode::Esc | KeyCode::Char('q')) => app.view = View::StartView(Start),
+            (_, KeyCode::Esc | KeyCode::Char('q')) => app.view = View::Start(Start),
             // Here, we assume all of the crate info has been fetched.
             (_, KeyCode::Char('j')) => select_next(&mut app.state)?,
             (_, KeyCode::Char('k')) => select_previous(&mut app.state)?,

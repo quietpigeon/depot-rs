@@ -12,14 +12,14 @@ pub mod update_view;
 
 #[derive(Debug)]
 pub enum View {
-    StartView(Start),
-    CatalogView(Catalog),
-    UpdateView(Update),
+    Start(Start),
+    Catalog(Catalog),
+    Update(Update),
 }
 
 impl Default for View {
     fn default() -> Self {
-        Self::StartView(Start)
+        Self::Start(Start)
     }
 }
 

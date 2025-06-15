@@ -1,4 +1,5 @@
 use super::{View, start_view::Start};
+use crate::app::AppMessage;
 use crate::keys::Selectable;
 use crate::ui::{DEFAULT_COLOR, DEFAULT_STYLE, Drawable, HIGHLIGHT_STYLE};
 use crossterm::event::KeyCode;
@@ -50,12 +51,14 @@ impl Drawable for Update {
 }
 
 impl Selectable for Update {
-    fn select(
+    async fn select(
         app: &mut crate::app::App,
         key: &crossterm::event::KeyEvent,
     ) -> Result<(), crate::errors::Error> {
         match (key.modifiers, key.code) {
-            (_, KeyCode::Esc | KeyCode::Char('q')) => app.view = View::StartView(Start),
+            (_, KeyCode::Esc | KeyCode::Char('q')) => {
+                app.view = View::Start(Start);
+            }
             (_, KeyCode::Char('j')) => {
                 if app.state.update_list_state.selected().is_none() {
                     app.state.update_list_state.select(Some(0))
@@ -70,10 +73,24 @@ impl Selectable for Update {
                     app.state.update_list_state.select_previous();
                 }
             }
-            (_, KeyCode::Enter) => todo!(),
+            (_, KeyCode::Enter) => {
+                if let Some(ix) = app.state.update_list_state.selected() {
+                    let k = &app.state.depot.get_outdated_krates()?.0[ix];
+                    let kk = k.clone();
+                    let tx = app.tx.clone();
+                    tokio::spawn(async move {
+                        if let Err(e) = kk.update().await {
+                            eprintln!("Error updating crate {}: {e}", kk.name);
+                            let _ = tx.send(AppMessage::KrateUpdateFailed { krate: kk.name });
+                        } else {
+                            let _ = tx.send(AppMessage::KrateUpdateSuccess { krate: kk.name });
+                        }
+                    });
+                }
+            }
             _ => {}
         }
+
         Ok(())
     }
 }
-

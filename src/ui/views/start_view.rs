@@ -1,5 +1,3 @@
-use std::ops::Not;
-
 use super::catalog_view::Catalog;
 use super::update_view::Update;
 use super::{Drawable, View, banner, center};
@@ -12,6 +10,7 @@ use ratatui::layout::Constraint;
 use ratatui::layout::Layout;
 use ratatui::text::Text;
 use ratatui::widgets::Paragraph;
+use std::ops::Not;
 
 #[derive(Debug)]
 pub struct Start;
@@ -73,16 +72,16 @@ impl Drawable for Start {
 }
 
 impl Selectable for Start {
-    fn select(app: &mut App, key: &crossterm::event::KeyEvent) -> Result<(), Error> {
+    async fn select(app: &mut App, key: &crossterm::event::KeyEvent) -> Result<(), Error> {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc | KeyCode::Char('q'))
             | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => app.quit(),
             (_, KeyCode::Char('c')) => {
                 if app.state.synced {
-                    app.view = View::CatalogView(Catalog)
+                    app.view = View::Catalog(Catalog)
                 }
             }
-            (_, KeyCode::Char('u')) => app.view = View::UpdateView(Update),
+            (_, KeyCode::Char('u')) => app.view = View::Update(Update),
             _ => {}
         }
 
