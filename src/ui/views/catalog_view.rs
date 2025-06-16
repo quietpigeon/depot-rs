@@ -5,7 +5,8 @@ use crate::{depot::DepotState, errors::Error, keys::Selectable, ui::Drawable};
 use crossterm::event::KeyCode;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Margin, Rect};
-use ratatui::style::Stylize;
+use ratatui::style::{Modifier, Style, Stylize};
+use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, BorderType, List, ListItem, Paragraph, Wrap};
 use std::rc::Rc;
 
@@ -25,20 +26,39 @@ impl Drawable for Catalog {
             .direction(ratatui::layout::Direction::Vertical)
             .constraints(vec![Constraint::Percentage(70), Constraint::Fill(1)])
             .split(layout[0]);
-        let right = Layout::default()
-            .direction(ratatui::layout::Direction::Vertical)
-            .constraints(vec![
-                Constraint::Percentage(15),
-                Constraint::Percentage(10),
-                Constraint::Percentage(10),
-                Constraint::Percentage(10),
-                Constraint::Percentage(10),
-                Constraint::Fill(4),
-            ])
-            .split(layout[1]);
 
         render_left(state, frame, left)?;
-        render_right(state, frame, right)?;
+
+        if let Some(ix) = state.list_state.selected() {
+            let krate = &state.depot.store.0[ix];
+            let title = format!("| {}@{} |", krate.name, krate.version);
+            let r_block = Block::bordered()
+                .border_type(BorderType::Rounded)
+                .style(DEFAULT_STYLE)
+                .title(title);
+            let inner = r_block.inner(layout[1]);
+            let right = Layout::default()
+                .direction(ratatui::layout::Direction::Vertical)
+                .constraints(vec![
+                    // Decription.
+                    Constraint::Percentage(15),
+                    // License
+                    Constraint::Percentage(10),
+                    //Rust version.
+                    Constraint::Percentage(10),
+                    // Documentation.
+                    Constraint::Percentage(10),
+                    // Homepage.
+                    Constraint::Percentage(10),
+                    //Repository.
+                    Constraint::Percentage(10),
+                    Constraint::Fill(4),
+                ])
+                .split(inner);
+
+            frame.render_widget(r_block, layout[1]);
+            render_right(krate, frame, right)?;
+        }
 
         Ok(())
     }
@@ -55,27 +75,14 @@ fn render_left(state: &mut DepotState, frame: &mut Frame, area: Rc<[Rect]>) -> R
     Ok(())
 }
 
-fn render_right(state: &mut DepotState, frame: &mut Frame, area: Rc<[Rect]>) -> Result<(), Error> {
-    let middle = Layout::default()
-        .direction(ratatui::layout::Direction::Horizontal)
-        .constraints(vec![
-            Constraint::Percentage(30),
-            Constraint::Percentage(40),
-            Constraint::Fill(1),
-        ])
-        .split(area[1]);
-
-    if let Some(ix) = state.list_state.selected() {
-        let krate = &state.depot.store.0[ix];
-        if !krate.info.description.is_empty() {
-            render_description(krate, frame, area[0])?;
-            render_version(krate, frame, middle[0])?;
-            render_license(krate, frame, middle[1])?;
-            render_rust_version(krate, frame, middle[2])?;
-            render_documentation_url(krate, frame, area[2])?;
-            render_homepage(krate, frame, area[3])?;
-            render_repository_url(krate, frame, area[4])?;
-        }
+fn render_right(krate: &Krate, frame: &mut Frame, area: Rc<[Rect]>) -> Result<(), Error> {
+    if !krate.info.description.is_empty() {
+        render_description(krate, frame, area[0])?;
+        render_license(krate, frame, area[1])?;
+        render_rust_version(krate, frame, area[2])?;
+        render_documentation_url(krate, frame, area[3])?;
+        render_homepage(krate, frame, area[4])?;
+        render_repository_url(krate, frame, area[5])?;
     }
 
     Ok(())
@@ -99,6 +106,7 @@ fn render_catalog(state: &mut DepotState, frame: &mut Frame, area: Rect) -> Resu
         .highlight_symbol("* ")
         .highlight_style(HIGHLIGHT_STYLE)
         .highlight_spacing(ratatui::widgets::HighlightSpacing::Always);
+
     frame.render_stateful_widget(krate_list, area, &mut state.list_state);
 
     Ok(())
@@ -176,15 +184,17 @@ fn render_text_with_title(
     frame: &mut Frame,
     area: Rect,
 ) -> Result<(), Error> {
-    frame.render_widget(
-        Paragraph::new(text).wrap(Wrap { trim: true }).block(
-            Block::bordered()
-                .border_type(BorderType::Rounded)
-                .title(title)
-                .style(DEFAULT_STYLE),
+    let lines = Line::from(vec![
+        Span::styled(
+            format!("{title}: "),
+            Style::default()
+                .fg(DEFAULT_COLOR)
+                .add_modifier(Modifier::BOLD),
         ),
-        area,
-    );
+        Span::styled(text, DEFAULT_STYLE),
+    ]);
+
+    frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: true }), area);
     Ok(())
 }
 
