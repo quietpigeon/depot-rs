@@ -6,7 +6,7 @@ use crossterm::event::KeyCode;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Margin, Rect};
 use ratatui::style::{Modifier, Style, Stylize};
-use ratatui::text::{Line, Span};
+use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, BorderType, List, ListItem, Paragraph, Wrap};
 use std::rc::Rc;
 
@@ -41,7 +41,7 @@ impl Drawable for Catalog {
                 .direction(ratatui::layout::Direction::Vertical)
                 .constraints(vec![
                     // Decription.
-                    Constraint::Percentage(15),
+                    Constraint::Percentage(20),
                     // License
                     Constraint::Percentage(10),
                     //Rust version.
@@ -52,7 +52,6 @@ impl Drawable for Catalog {
                     Constraint::Percentage(10),
                     //Repository.
                     Constraint::Percentage(10),
-                    Constraint::Fill(4),
                 ])
                 .split(inner);
 
@@ -77,12 +76,7 @@ fn render_left(state: &mut DepotState, frame: &mut Frame, area: Rc<[Rect]>) -> R
 
 fn render_right(krate: &Krate, frame: &mut Frame, area: Rc<[Rect]>) -> Result<(), Error> {
     if !krate.info.description.is_empty() {
-        render_description(krate, frame, area[0])?;
-        render_license(krate, frame, area[1])?;
-        render_rust_version(krate, frame, area[2])?;
-        render_documentation_url(krate, frame, area[3])?;
-        render_homepage(krate, frame, area[4])?;
-        render_repository_url(krate, frame, area[5])?;
+        render_krate_catalog(krate, frame, area[0])?;
     }
 
     Ok(())
@@ -113,6 +107,7 @@ fn render_catalog(state: &mut DepotState, frame: &mut Frame, area: Rect) -> Resu
 }
 
 fn render_tag_list(krate: &Krate, frame: &mut ratatui::Frame, area: Rect) -> Result<(), Error> {
+    // TODO: Move this to the right catalog.
     let tags: Vec<ListItem> = krate
         .info
         .tags
@@ -123,7 +118,7 @@ fn render_tag_list(krate: &Krate, frame: &mut ratatui::Frame, area: Rect) -> Res
     let tag_list = List::new(tags).block(
         Block::bordered()
             .border_type(ratatui::widgets::BorderType::Rounded)
-            .title("Tags")
+            .title(" Tags")
             .style(DEFAULT_STYLE),
     );
 
@@ -132,70 +127,51 @@ fn render_tag_list(krate: &Krate, frame: &mut ratatui::Frame, area: Rect) -> Res
     Ok(())
 }
 
-fn render_description(krate: &Krate, frame: &mut ratatui::Frame, area: Rect) -> Result<(), Error> {
-    let description = &krate.info.description;
-    render_text_with_title("Description", description, frame, area)?;
-
-    Ok(())
-}
-
-fn render_version(krate: &Krate, frame: &mut ratatui::Frame, area: Rect) -> Result<(), Error> {
-    let version = &krate.version;
-    render_text_with_title("Version", version.to_string().as_str(), frame, area)?;
-
-    Ok(())
-}
-
-fn render_license(krate: &Krate, frame: &mut Frame, area: Rect) -> Result<(), Error> {
-    let license = &krate.info.license;
-    render_text_with_title("License", license, frame, area)?;
-
-    Ok(())
-}
-
-fn render_rust_version(krate: &Krate, frame: &mut Frame, area: Rect) -> Result<(), Error> {
-    if let Some(license) = &krate.info.rust_version {
-        render_text_with_title("Rust version", license.to_string().as_str(), frame, area)?;
-    } else {
-        render_text_with_title("Rust version", "unknown", frame, area)?;
-    }
-
-    Ok(())
-}
-
-fn render_documentation_url(krate: &Krate, frame: &mut Frame, area: Rect) -> Result<(), Error> {
-    let url = &krate.info.documentation;
-    render_text_with_title("Documentation", url, frame, area)
-}
-
-fn render_homepage(krate: &Krate, frame: &mut Frame, area: Rect) -> Result<(), Error> {
-    let url = &krate.info.homepage;
-    render_text_with_title("Homepage", url, frame, area)
-}
-
-fn render_repository_url(krate: &Krate, frame: &mut Frame, area: Rect) -> Result<(), Error> {
-    let url = &krate.info.repository;
-    render_text_with_title("Repository", url, frame, area)
-}
-
-fn render_text_with_title(
-    title: &str,
-    text: &str,
-    frame: &mut Frame,
+fn render_krate_catalog(
+    krate: &Krate,
+    frame: &mut ratatui::Frame,
     area: Rect,
 ) -> Result<(), Error> {
-    let lines = Line::from(vec![
+    let mut lines = vec![];
+    let d = &krate.info.description;
+    let description = text_with_title(" Description", d)?;
+    let license = text_with_title("󰿃 License", &krate.info.license)?;
+    let rv = match &krate.info.rust_version {
+        Some(v) => v.to_string(),
+        None => "unknown".to_string(),
+    };
+    let rust_version = text_with_title(" Rust version", &rv)?;
+    let docs = text_with_title("󰈙 Documentation", &krate.info.documentation)?;
+    let hp = text_with_title("󰋜 Homepage", &krate.info.homepage)?;
+    let repo = text_with_title("󰳏 Repository", &krate.info.repository)?;
+
+    lines.push(Line::from(description));
+    lines.push(Line::from(license));
+    lines.push(Line::from(rust_version));
+    lines.push(Line::from(docs));
+    lines.push(Line::from(hp));
+    lines.push(Line::from(repo));
+
+    let text = Text::from(lines);
+
+    frame.render_widget(Paragraph::new(text).wrap(Wrap { trim: true }), area);
+
+    Ok(())
+}
+
+fn text_with_title<'a>(title: &'a str, text: &'a str) -> Result<Vec<Span<'a>>, Error> {
+    let lines = vec![
         Span::styled(
             format!("{title}: "),
             Style::default()
                 .fg(DEFAULT_COLOR)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::styled(text, DEFAULT_STYLE),
-    ]);
+        Span::styled(format!("{text}"), DEFAULT_STYLE),
+        Span::styled(format!("\n"), DEFAULT_STYLE),
+    ];
 
-    frame.render_widget(Paragraph::new(lines).wrap(Wrap { trim: true }), area);
-    Ok(())
+    Ok(lines)
 }
 
 impl Selectable for Catalog {
