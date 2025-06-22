@@ -22,12 +22,8 @@ impl Drawable for Catalog {
             .direction(ratatui::layout::Direction::Horizontal)
             .constraints(vec![Constraint::Percentage(30), Constraint::Fill(1)])
             .split(frame.area().inner(Margin::new(5, 5)));
-        let left = Layout::default()
-            .direction(ratatui::layout::Direction::Vertical)
-            .constraints(vec![Constraint::Percentage(70), Constraint::Fill(1)])
-            .split(layout[0]);
 
-        render_left(state, frame, left)?;
+        render_left(state, frame, layout[0])?;
 
         if let Some(ix) = state.list_state.selected() {
             let krate = &state.depot.store.0[ix];
@@ -62,21 +58,15 @@ impl Drawable for Catalog {
         Ok(())
     }
 }
-fn render_left(state: &mut DepotState, frame: &mut Frame, area: Rc<[Rect]>) -> Result<(), Error> {
-    render_catalog(state, frame, area[0])?;
-    if let Some(ix) = state.list_state.selected() {
-        let krate = &state.depot.store.0[ix];
-        if !krate.info.description.is_empty() {
-            render_tag_list(krate, frame, area[1])?;
-        }
-    }
+fn render_left(state: &mut DepotState, frame: &mut Frame, area: Rect) -> Result<(), Error> {
+    render_catalog(state, frame, area)?;
 
     Ok(())
 }
 
 fn render_right(krate: &Krate, frame: &mut Frame, area: Rc<[Rect]>) -> Result<(), Error> {
     if !krate.info.description.is_empty() {
-        render_krate_catalog(krate, frame, area[0])?;
+        render_krate_summary(krate, frame, area[0])?;
     }
 
     Ok(())
@@ -106,35 +96,16 @@ fn render_catalog(state: &mut DepotState, frame: &mut Frame, area: Rect) -> Resu
     Ok(())
 }
 
-fn render_tag_list(krate: &Krate, frame: &mut ratatui::Frame, area: Rect) -> Result<(), Error> {
-    // TODO: Move this to the right catalog.
-    let tags: Vec<ListItem> = krate
-        .info
-        .tags
-        .0
-        .iter()
-        .map(|t| ListItem::from(format!("#{t}")).fg(DEFAULT_COLOR))
-        .collect();
-    let tag_list = List::new(tags).block(
-        Block::bordered()
-            .border_type(ratatui::widgets::BorderType::Rounded)
-            .title(" Tags")
-            .style(DEFAULT_STYLE),
-    );
-
-    frame.render_widget(tag_list, area);
-
-    Ok(())
-}
-
-fn render_krate_catalog(
+fn render_krate_summary(
     krate: &Krate,
     frame: &mut ratatui::Frame,
     area: Rect,
 ) -> Result<(), Error> {
     let mut lines = vec![];
     let d = &krate.info.description;
+    let t = &krate.info.tags.to_string();
     let description = text_with_title(" Description", d)?;
+    let tags = text_with_title(" Tags", t)?;
     let license = text_with_title("󰿃 License", &krate.info.license)?;
     let rv = match &krate.info.rust_version {
         Some(v) => v.to_string(),
@@ -146,6 +117,9 @@ fn render_krate_catalog(
     let repo = text_with_title("󰳏 Repository", &krate.info.repository)?;
 
     lines.push(Line::from(description));
+    if !&krate.info.tags.0.is_empty() {
+        lines.push(Line::from(tags));
+    }
     lines.push(Line::from(license));
     lines.push(Line::from(rust_version));
     lines.push(Line::from(docs));
@@ -209,3 +183,4 @@ fn select_previous(state: &mut DepotState) -> Result<(), Error> {
     state.list_state.select_previous();
     Ok(())
 }
+
