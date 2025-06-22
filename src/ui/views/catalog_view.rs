@@ -107,8 +107,8 @@ fn render_krate_summary(
     let mut lines = vec![];
     let d = &krate.info.description;
     let t = &krate.info.tags.to_string();
-    let description = vec![Span::styled(format!("{d}"), DEFAULT_STYLE)];
-    let spacer = vec![Span::styled(format!("\n"), DEFAULT_STYLE)];
+    let description = vec![Span::styled(d, DEFAULT_STYLE)];
+    let spacer = vec![Span::styled("\n", DEFAULT_STYLE)];
     let tags = text_with_title(" Tags", t)?;
     let license = text_with_title("󰿃 License", &krate.info.license)?;
     let rv = match &krate.info.rust_version {
@@ -146,7 +146,7 @@ fn text_with_title<'a>(title: &'a str, text: &'a str) -> Result<Vec<Span<'a>>, E
                 .fg(DEFAULT_COLOR)
                 .add_modifier(Modifier::BOLD),
         ),
-        Span::styled(format!("{text}"), DEFAULT_STYLE),
+        Span::styled(text, DEFAULT_STYLE),
     ];
 
     Ok(lines)
@@ -187,4 +187,3 @@ fn select_previous(state: &mut DepotState) -> Result<(), Error> {
     state.list_state.select_previous();
     Ok(())
 }
-
