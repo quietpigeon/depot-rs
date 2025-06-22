@@ -7,7 +7,7 @@ use ratatui::{
 
 pub fn new() -> Result<Paragraph<'static>, Error> {
     let crates = Line::from(vec![
-        Span::styled("View ", DEFAULT_STYLE),
+        Span::styled(" View ", DEFAULT_STYLE),
         Span::styled(
             "c",
             Style::default()
@@ -18,6 +18,7 @@ pub fn new() -> Result<Paragraph<'static>, Error> {
     ]);
 
     let updates = Line::from(vec![
+        Span::styled("󰚰 ", DEFAULT_STYLE),
         Span::styled(
             "U",
             Style::default()

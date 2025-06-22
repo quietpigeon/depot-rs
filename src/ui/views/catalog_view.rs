@@ -5,7 +5,8 @@ use crate::{depot::DepotState, errors::Error, keys::Selectable, ui::Drawable};
 use crossterm::event::KeyCode;
 use ratatui::Frame;
 use ratatui::layout::{Constraint, Layout, Margin, Rect};
-use ratatui::style::Stylize;
+use ratatui::style::{Modifier, Style, Stylize};
+use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, BorderType, List, ListItem, Paragraph, Wrap};
 use std::rc::Rc;
 
@@ -21,61 +22,54 @@ impl Drawable for Catalog {
             .direction(ratatui::layout::Direction::Horizontal)
             .constraints(vec![Constraint::Percentage(30), Constraint::Fill(1)])
             .split(frame.area().inner(Margin::new(5, 5)));
-        let left = Layout::default()
-            .direction(ratatui::layout::Direction::Vertical)
-            .constraints(vec![Constraint::Percentage(70), Constraint::Fill(1)])
-            .split(layout[0]);
-        let right = Layout::default()
-            .direction(ratatui::layout::Direction::Vertical)
-            .constraints(vec![
-                Constraint::Percentage(15),
-                Constraint::Percentage(10),
-                Constraint::Percentage(10),
-                Constraint::Percentage(10),
-                Constraint::Percentage(10),
-                Constraint::Fill(4),
-            ])
-            .split(layout[1]);
 
-        render_left(state, frame, left)?;
-        render_right(state, frame, right)?;
+        render_left(state, frame, layout[0])?;
+
+        if let Some(ix) = state.list_state.selected() {
+            let krate = &state.depot.store.0[ix];
+            let title = format!("| {}@{} |", krate.name, krate.version);
+            let r_block = Block::bordered()
+                .border_type(BorderType::Rounded)
+                .style(DEFAULT_STYLE)
+                .title(title);
+            let inner = r_block.inner(layout[1]);
+            let right = Layout::default()
+                .direction(ratatui::layout::Direction::Vertical)
+                .constraints(vec![
+                    // Decription.
+                    Constraint::Percentage(20),
+                    // License
+                    Constraint::Percentage(10),
+                    //Rust version.
+                    Constraint::Percentage(10),
+                    // Documentation.
+                    Constraint::Percentage(10),
+                    // Homepage.
+                    Constraint::Percentage(10),
+                    //Repository.
+                    Constraint::Percentage(10),
+                ])
+                .split(inner);
+
+            frame.render_widget(r_block, layout[1]);
+            render_right(krate, frame, right)?;
+        }
 
         Ok(())
     }
 }
-fn render_left(state: &mut DepotState, frame: &mut Frame, area: Rc<[Rect]>) -> Result<(), Error> {
-    render_catalog(state, frame, area[0])?;
-    if let Some(ix) = state.list_state.selected() {
-        let krate = &state.depot.store.0[ix];
-        if !krate.info.description.is_empty() {
-            render_tag_list(krate, frame, area[1])?;
-        }
-    }
+fn render_left(state: &mut DepotState, frame: &mut Frame, area: Rect) -> Result<(), Error> {
+    render_catalog(state, frame, area)?;
 
     Ok(())
 }
 
-fn render_right(state: &mut DepotState, frame: &mut Frame, area: Rc<[Rect]>) -> Result<(), Error> {
-    let middle = Layout::default()
-        .direction(ratatui::layout::Direction::Horizontal)
-        .constraints(vec![
-            Constraint::Percentage(30),
-            Constraint::Percentage(40),
-            Constraint::Fill(1),
-        ])
-        .split(area[1]);
-
-    if let Some(ix) = state.list_state.selected() {
-        let krate = &state.depot.store.0[ix];
-        if !krate.info.description.is_empty() {
-            render_description(krate, frame, area[0])?;
-            render_version(krate, frame, middle[0])?;
-            render_license(krate, frame, middle[1])?;
-            render_rust_version(krate, frame, middle[2])?;
-            render_documentation_url(krate, frame, area[2])?;
-            render_homepage(krate, frame, area[3])?;
-            render_repository_url(krate, frame, area[4])?;
-        }
+fn render_right(krate: &Krate, frame: &mut Frame, area: Rc<[Rect]>) -> Result<(), Error> {
+    // NOTE: This assumes every crate must have a description.
+    // This is true for crates that have been uploaded to crates.io, but it might break for local
+    // crates that don't have a description yet.
+    if !krate.info.description.is_empty() {
+        render_krate_summary(krate, frame, area[0])?;
     }
 
     Ok(())
@@ -99,93 +93,63 @@ fn render_catalog(state: &mut DepotState, frame: &mut Frame, area: Rect) -> Resu
         .highlight_symbol("* ")
         .highlight_style(HIGHLIGHT_STYLE)
         .highlight_spacing(ratatui::widgets::HighlightSpacing::Always);
+
     frame.render_stateful_widget(krate_list, area, &mut state.list_state);
 
     Ok(())
 }
 
-fn render_tag_list(krate: &Krate, frame: &mut ratatui::Frame, area: Rect) -> Result<(), Error> {
-    let tags: Vec<ListItem> = krate
-        .info
-        .tags
-        .0
-        .iter()
-        .map(|t| ListItem::from(format!("#{t}")).fg(DEFAULT_COLOR))
-        .collect();
-    let tag_list = List::new(tags).block(
-        Block::bordered()
-            .border_type(ratatui::widgets::BorderType::Rounded)
-            .title("Tags")
-            .style(DEFAULT_STYLE),
-    );
-
-    frame.render_widget(tag_list, area);
-
-    Ok(())
-}
-
-fn render_description(krate: &Krate, frame: &mut ratatui::Frame, area: Rect) -> Result<(), Error> {
-    let description = &krate.info.description;
-    render_text_with_title("Description", description, frame, area)?;
-
-    Ok(())
-}
-
-fn render_version(krate: &Krate, frame: &mut ratatui::Frame, area: Rect) -> Result<(), Error> {
-    let version = &krate.version;
-    render_text_with_title("Version", version.to_string().as_str(), frame, area)?;
-
-    Ok(())
-}
-
-fn render_license(krate: &Krate, frame: &mut Frame, area: Rect) -> Result<(), Error> {
-    let license = &krate.info.license;
-    render_text_with_title("License", license, frame, area)?;
-
-    Ok(())
-}
-
-fn render_rust_version(krate: &Krate, frame: &mut Frame, area: Rect) -> Result<(), Error> {
-    if let Some(license) = &krate.info.rust_version {
-        render_text_with_title("Rust version", license.to_string().as_str(), frame, area)?;
-    } else {
-        render_text_with_title("Rust version", "unknown", frame, area)?;
-    }
-
-    Ok(())
-}
-
-fn render_documentation_url(krate: &Krate, frame: &mut Frame, area: Rect) -> Result<(), Error> {
-    let url = &krate.info.documentation;
-    render_text_with_title("Documentation", url, frame, area)
-}
-
-fn render_homepage(krate: &Krate, frame: &mut Frame, area: Rect) -> Result<(), Error> {
-    let url = &krate.info.homepage;
-    render_text_with_title("Homepage", url, frame, area)
-}
-
-fn render_repository_url(krate: &Krate, frame: &mut Frame, area: Rect) -> Result<(), Error> {
-    let url = &krate.info.repository;
-    render_text_with_title("Repository", url, frame, area)
-}
-
-fn render_text_with_title(
-    title: &str,
-    text: &str,
-    frame: &mut Frame,
+fn render_krate_summary(
+    krate: &Krate,
+    frame: &mut ratatui::Frame,
     area: Rect,
 ) -> Result<(), Error> {
-    frame.render_widget(
-        Paragraph::new(text).wrap(Wrap { trim: true }).block(
-            Block::bordered()
-                .border_type(BorderType::Rounded)
-                .title(title)
-                .style(DEFAULT_STYLE),
-        ),
-        area,
-    );
+    let mut lines = vec![];
+    let d = &krate.info.description;
+    let t = &krate.info.tags.to_string();
+    let description = vec![Span::styled(d, DEFAULT_STYLE)];
+    let spacer = vec![Span::styled("\n", DEFAULT_STYLE)];
+    let tags = text_with_title(" Tags", t)?;
+    let license = text_with_title("󰿃 License", &krate.info.license)?;
+    let rv = match &krate.info.rust_version {
+        Some(v) => v.to_string(),
+        None => "unknown".to_string(),
+    };
+    let rust_version = text_with_title(" Rust version", &rv)?;
+    let docs = text_with_title("󰈙 Documentation", &krate.info.documentation)?;
+    let hp = text_with_title("󰋜 Homepage", &krate.info.homepage)?;
+    let repo = text_with_title("󰳏 Repository", &krate.info.repository)?;
+
+    lines.push(Line::from(description));
+    lines.push(Line::from(spacer));
+    if !&krate.info.tags.0.is_empty() {
+        lines.push(Line::from(tags));
+    }
+    lines.push(Line::from(license));
+    lines.push(Line::from(rust_version));
+    lines.push(Line::from(docs));
+    lines.push(Line::from(hp));
+    lines.push(Line::from(repo));
+
+    let text = Text::from(lines);
+
+    frame.render_widget(Paragraph::new(text).wrap(Wrap { trim: true }), area);
+
     Ok(())
+}
+
+fn text_with_title<'a>(title: &'a str, text: &'a str) -> Result<Vec<Span<'a>>, Error> {
+    let lines = vec![
+        Span::styled(
+            format!("{title}: "),
+            Style::default()
+                .fg(DEFAULT_COLOR)
+                .add_modifier(Modifier::BOLD),
+        ),
+        Span::styled(text, DEFAULT_STYLE),
+    ];
+
+    Ok(lines)
 }
 
 impl Selectable for Catalog {
