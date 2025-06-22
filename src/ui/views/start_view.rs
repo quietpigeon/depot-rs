@@ -53,11 +53,16 @@ impl Drawable for Start {
             // TODO: Use progress bar instead of static text.
             frame.render_widget(progress_bar::new()?, layout[2]);
         } else {
+            let outdated_krate_count = state.depot.outdated_krate_count()?;
+            let outdated_crate_str = if outdated_krate_count != 0 {
+                format!("{} crates are outdated.", &outdated_krate_count)
+            } else {
+                "All crates are up-to-date!".to_string()
+            };
             frame.render_widget(
                 Paragraph::new(format!(
-                    "You have {} crates installed.\n\n{} crates are outdated.",
-                    state.depot.crate_count,
-                    state.depot.outdated_krate_count()?,
+                    "You have {} crates installed.\n\n{outdated_crate_str}",
+                    state.depot.crate_count
                 ))
                 .style(DEFAULT_STYLE)
                 .centered(),

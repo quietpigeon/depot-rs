@@ -65,6 +65,9 @@ fn render_left(state: &mut DepotState, frame: &mut Frame, area: Rect) -> Result<
 }
 
 fn render_right(krate: &Krate, frame: &mut Frame, area: Rc<[Rect]>) -> Result<(), Error> {
+    // NOTE: This assumes every crate must have a description.
+    // This is true for crates that have been uploaded to crates.io, but it might break for local
+    // crates that don't have a description yet.
     if !krate.info.description.is_empty() {
         render_krate_summary(krate, frame, area[0])?;
     }
@@ -104,7 +107,8 @@ fn render_krate_summary(
     let mut lines = vec![];
     let d = &krate.info.description;
     let t = &krate.info.tags.to_string();
-    let description = text_with_title(" Description", d)?;
+    let description = vec![Span::styled(format!("{d}"), DEFAULT_STYLE)];
+    let spacer = vec![Span::styled(format!("\n"), DEFAULT_STYLE)];
     let tags = text_with_title(" Tags", t)?;
     let license = text_with_title("󰿃 License", &krate.info.license)?;
     let rv = match &krate.info.rust_version {
@@ -117,6 +121,7 @@ fn render_krate_summary(
     let repo = text_with_title("󰳏 Repository", &krate.info.repository)?;
 
     lines.push(Line::from(description));
+    lines.push(Line::from(spacer));
     if !&krate.info.tags.0.is_empty() {
         lines.push(Line::from(tags));
     }
@@ -142,7 +147,6 @@ fn text_with_title<'a>(title: &'a str, text: &'a str) -> Result<Vec<Span<'a>>, E
                 .add_modifier(Modifier::BOLD),
         ),
         Span::styled(format!("{text}"), DEFAULT_STYLE),
-        Span::styled(format!("\n"), DEFAULT_STYLE),
     ];
 
     Ok(lines)

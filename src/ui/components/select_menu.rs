@@ -18,8 +18,9 @@ pub fn new() -> Result<Paragraph<'static>, Error> {
     ]);
 
     let updates = Line::from(vec![
+        Span::styled("󰚰 ", DEFAULT_STYLE),
         Span::styled(
-            "󰚰 U",
+            "U",
             Style::default()
                 .fg(Color::LightBlue)
                 .add_modifier(Modifier::UNDERLINED),
