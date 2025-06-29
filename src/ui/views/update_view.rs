@@ -80,8 +80,8 @@ impl Selectable for Update {
                     let tx = app.tx.clone();
                     tokio::spawn(async move {
                         let _ = match kk.update().await {
-                            Ok(_) => tx.send(AppMessage::KrateUpdateSuccess { krate: kk.name }),
-                            Err(_) => tx.send(AppMessage::KrateUpdateFailed { krate: kk.name }),
+                            Ok(_) => tx.send(AppMessage::UpdateCrateSuccess { krate: kk.name }),
+                            Err(_) => tx.send(AppMessage::UpdateCrateFailed { krate: kk.name }),
                         };
                     });
                 }

@@ -51,15 +51,15 @@ impl App {
 
             if let Ok(message) = self.rx.try_recv() {
                 match message {
-                    AppMessage::KrateUpdateSuccess { krate } => {
+                    AppMessage::UpdateCrateSuccess { krate } => {
                         self.state.sync_krate(&krate)?;
                         terminal.draw(|f| render(&mut self.view, &mut self.state, f).unwrap())?;
                     }
-                    AppMessage::KrateUninstallSuccess => {
+                    AppMessage::UninstallCrateSuccess => {
                         terminal.draw(|f| render(&mut self.view, &mut self.state, f).unwrap())?;
                     }
-                    AppMessage::KrateUpdateFailed { krate } => println!("failed updating {krate}"),
-                    AppMessage::KrateUninstallFailed { krate } => {
+                    AppMessage::UpdateCrateFailed { krate } => println!("failed updating {krate}"),
+                    AppMessage::UninstallCrateFailed { krate } => {
                         println!("failed uninstalling {krate}")
                     }
                 }
@@ -88,8 +88,8 @@ impl App {
 }
 
 pub enum AppMessage {
-    KrateUpdateSuccess { krate: String },
-    KrateUpdateFailed { krate: String },
-    KrateUninstallSuccess,
-    KrateUninstallFailed { krate: String },
+    UpdateCrateSuccess { krate: String },
+    UpdateCrateFailed { krate: String },
+    UninstallCrateSuccess,
+    UninstallCrateFailed { krate: String },
 }

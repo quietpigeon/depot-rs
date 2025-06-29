@@ -198,8 +198,8 @@ fn delete_selected_crate(app: &mut crate::app::App) {
         let tx = app.tx.clone();
         tokio::spawn(async move {
             let _ = match &kk.uninstall().await {
-                Ok(_) => tx.send(AppMessage::KrateUninstallSuccess),
-                Err(_) => tx.send(AppMessage::KrateUninstallFailed { krate: kk.name }),
+                Ok(_) => tx.send(AppMessage::UninstallCrateSuccess),
+                Err(_) => tx.send(AppMessage::UninstallCrateFailed { krate: kk.name }),
             };
         });
         // NOTE: Is it safe to assume `ix` in `app.list_state` is the same as in
