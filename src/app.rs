@@ -55,7 +55,13 @@ impl App {
                         self.state.sync_krate(&krate)?;
                         terminal.draw(|f| render(&mut self.view, &mut self.state, f).unwrap())?;
                     }
+                    AppMessage::KrateUninstallSuccess => {
+                        terminal.draw(|f| render(&mut self.view, &mut self.state, f).unwrap())?;
+                    }
                     AppMessage::KrateUpdateFailed { krate } => println!("failed updating {krate}"),
+                    AppMessage::KrateUninstallFailed { krate } => {
+                        println!("failed uninstalling {krate}")
+                    }
                 }
             }
         }
@@ -84,4 +90,6 @@ impl App {
 pub enum AppMessage {
     KrateUpdateSuccess { krate: String },
     KrateUpdateFailed { krate: String },
+    KrateUninstallSuccess,
+    KrateUninstallFailed { krate: String },
 }

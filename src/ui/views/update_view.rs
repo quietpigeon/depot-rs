@@ -79,12 +79,10 @@ impl Selectable for Update {
                     let kk = k.clone();
                     let tx = app.tx.clone();
                     tokio::spawn(async move {
-                        if let Err(e) = kk.update().await {
-                            eprintln!("Error updating crate {}: {e}", kk.name);
-                            let _ = tx.send(AppMessage::KrateUpdateFailed { krate: kk.name });
-                        } else {
-                            let _ = tx.send(AppMessage::KrateUpdateSuccess { krate: kk.name });
-                        }
+                        let _ = match kk.update().await {
+                            Ok(_) => tx.send(AppMessage::KrateUpdateSuccess { krate: kk.name }),
+                            Err(_) => tx.send(AppMessage::KrateUpdateFailed { krate: kk.name }),
+                        };
                     });
                 }
             }

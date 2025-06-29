@@ -35,3 +35,8 @@ pub async fn install_crate(c: &str) -> Result<(), Error> {
         .output()?;
     Ok(())
 }
+
+pub async fn uninstall_crate(c: &str) -> Result<(), Error> {
+    Command::new("cargo").arg("uninstall").arg(c).output()?;
+    Ok(())
+}
