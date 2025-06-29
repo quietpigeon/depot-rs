@@ -39,15 +39,6 @@ impl Drawable for Start {
             Paragraph::new(banner).style(DEFAULT_STYLE).centered(),
             banner_area,
         );
-        frame.render_widget(
-            Paragraph::new(format!(
-                "You have {} crates installed.",
-                state.depot.crate_count
-            ))
-            .style(DEFAULT_STYLE)
-            .centered(),
-            layout[1],
-        );
 
         if state.synced.not() {
             // TODO: Use progress bar instead of static text.
@@ -62,7 +53,7 @@ impl Drawable for Start {
             frame.render_widget(
                 Paragraph::new(format!(
                     "You have {} crates installed.\n\n{outdated_crate_str}",
-                    state.depot.crate_count
+                    state.depot.crate_count()
                 ))
                 .style(DEFAULT_STYLE)
                 .centered(),

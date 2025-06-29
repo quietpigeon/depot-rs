@@ -1,4 +1,5 @@
 use super::{View, start_view::Start};
+use crate::app::AppMessage;
 use crate::depot::Krate;
 use crate::ui::{DEFAULT_COLOR, DEFAULT_STYLE, HIGHLIGHT_STYLE};
 use crate::{depot::DepotState, errors::Error, keys::Selectable, ui::Drawable};
@@ -162,6 +163,7 @@ impl Selectable for Catalog {
             // Here, we assume all of the crate info has been fetched.
             (_, KeyCode::Char('j')) => select_next(&mut app.state)?,
             (_, KeyCode::Char('k')) => select_previous(&mut app.state)?,
+            (_, KeyCode::Char('d')) => delete_selected_crate(app),
             _ => {}
         }
         Ok(())
@@ -175,7 +177,7 @@ fn select_next(state: &mut DepotState) -> Result<(), Error> {
     }
     // Prevents selecting an index out of bounds. This is most likely a bug on ratatui's
     // side.
-    if state.list_state.selected().unwrap() + 1 == state.depot.crate_count as usize {
+    if state.list_state.selected().unwrap() + 1 == state.depot.crate_count() as usize {
         Ok(())
     } else {
         state.list_state.select_next();
@@ -186,4 +188,22 @@ fn select_next(state: &mut DepotState) -> Result<(), Error> {
 fn select_previous(state: &mut DepotState) -> Result<(), Error> {
     state.list_state.select_previous();
     Ok(())
+}
+
+fn delete_selected_crate(app: &mut crate::app::App) {
+    if let Some(ix) = app.state.list_state.selected() {
+        app.state.list_state.select(None);
+        let k = &app.state.depot.store.0[ix];
+        let kk = k.clone();
+        let tx = app.tx.clone();
+        tokio::spawn(async move {
+            let _ = match &kk.uninstall().await {
+                Ok(_) => tx.send(AppMessage::UninstallCrateSuccess),
+                Err(_) => tx.send(AppMessage::UninstallCrateFailed { krate: kk.name }),
+            };
+        });
+        // NOTE: Is it safe to assume `ix` in `app.list_state` is the same as in
+        // `app.state.depot.store`?
+        app.state.depot.store.0.remove(ix);
+    };
 }

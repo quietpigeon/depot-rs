@@ -1,4 +1,4 @@
-use crate::commands::{install_crate, list_crates, search_crate};
+use crate::commands::{install_crate, list_crates, search_crate, uninstall_crate};
 use crate::errors::Error;
 use crate::parser::{alphanumeric1_with_hyphen, ws, ws2};
 use nom::bytes::complete::{tag, take_until};
@@ -23,12 +23,6 @@ pub struct DepotState {
     pub synced: bool,
 }
 
-#[derive(Debug, Default)]
-pub struct Depot {
-    pub store: Krates,
-    pub crate_count: i64,
-}
-
 impl Default for DepotState {
     fn default() -> Self {
         let depot = Depot::get().expect("failed to initialize `DepotState`");
@@ -49,10 +43,11 @@ impl Default for DepotState {
 
 impl DepotState {
     pub fn sync(&mut self) -> Result<(), Error> {
+        let crate_count = self.depot.crate_count();
         for krate in &mut self.depot.store.0 {
             krate.info = KrateInfo::get(&krate.name)?;
             self.sync_status += 1;
-            self.synced = self.sync_status == self.depot.crate_count;
+            self.synced = self.sync_status == crate_count;
         }
 
         Ok(())
@@ -67,14 +62,22 @@ impl DepotState {
     }
 }
 
+#[derive(Debug, Default)]
+pub struct Depot {
+    pub store: Krates,
+}
+
 impl Depot {
+    pub fn crate_count(&self) -> i64 {
+        self.store.0.len() as i64
+    }
+
     /// Obtain the list of installed crates.
     pub fn get() -> Result<Self, Error> {
         let output = list_crates()?;
         let store = Krates::parse(&output)?.1;
-        let crate_count = store.0.len() as i64;
 
-        Ok(Self { store, crate_count })
+        Ok(Self { store })
     }
 
     /// Which one of you is outdated?
@@ -132,6 +135,10 @@ impl Krate {
 
     pub async fn update(&self) -> Result<(), Error> {
         install_crate(&self.name).await
+    }
+
+    pub async fn uninstall(&self) -> Result<(), Error> {
+        uninstall_crate(&self.name).await
     }
 
     /// Retrieves information about the crate.
