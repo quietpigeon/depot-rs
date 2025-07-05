@@ -4,7 +4,7 @@ use crate::keys::key_handler;
 use crate::ui::{render, views::View};
 use color_eyre::Result;
 use crossterm::event::{Event, KeyEventKind};
-use ratatui::DefaultTerminal;
+use ratatui::{CompletedFrame, DefaultTerminal};
 use std::ops::Not;
 use std::sync::mpsc::{self, channel};
 use std::time::Duration;
@@ -39,7 +39,7 @@ impl App {
     }
 
     /// Run the application's main loop.
-    pub async fn run(mut self, mut terminal: DefaultTerminal) -> Result<()> {
+    pub async fn run(mut self, mut terminal: DefaultTerminal) -> Result<(), Error> {
         self.running = true;
         while self.running {
             terminal.draw(|f| render(&mut self.view, &mut self.state, f).unwrap())?;
@@ -50,19 +50,11 @@ impl App {
             }
 
             if let Ok(message) = self.rx.try_recv() {
-                match message {
-                    AppMessage::UpdateCrateSuccess { krate } => {
-                        self.state.sync_krate(&krate)?;
-                        terminal.draw(|f| render(&mut self.view, &mut self.state, f).unwrap())?;
-                    }
-                    AppMessage::UninstallCrateSuccess => {
-                        terminal.draw(|f| render(&mut self.view, &mut self.state, f).unwrap())?;
-                    }
-                    AppMessage::UpdateCrateFailed { krate } => println!("failed updating {krate}"),
-                    AppMessage::UninstallCrateFailed { krate } => {
-                        println!("failed uninstalling {krate}")
-                    }
-                }
+                handle_app_message(&mut self.state, message)?;
+                // Redraw to update components.
+                terminal.draw(|f| {
+                    render(&mut self.view, &mut self.state, f).expect("failed to render")
+                })?;
             }
         }
 
@@ -85,6 +77,18 @@ impl App {
         }
         Ok(())
     }
+}
+
+fn handle_app_message(state: &mut DepotState, message: AppMessage) -> Result<(), Error> {
+    match message {
+        AppMessage::UpdateCrateSuccess { krate } => state.sync_krate(&krate)?,
+        AppMessage::UninstallCrateSuccess => {}
+        AppMessage::UninstallCrateFailed { krate } | AppMessage::UpdateCrateFailed { krate } => {
+            return Err(Error::Unexpected(krate));
+        }
+    }
+
+    Ok(())
 }
 
 pub enum AppMessage {

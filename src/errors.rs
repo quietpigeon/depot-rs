@@ -14,6 +14,9 @@ pub enum Error {
 
     #[error("failed to create text")]
     DisplayFmt(#[from] std::fmt::Error),
+
+    #[error("unexpected error occured for: {0}")]
+    Unexpected(String),
 }
 
 impl From<nom::Err<nom::error::Error<&str>>> for Error {
