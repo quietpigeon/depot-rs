@@ -10,7 +10,6 @@ use ratatui::layout::Constraint;
 use ratatui::layout::Layout;
 use ratatui::text::Text;
 use ratatui::widgets::Paragraph;
-use std::ops::Not;
 
 #[derive(Debug)]
 pub struct Start;
@@ -40,8 +39,7 @@ impl Drawable for Start {
             banner_area,
         );
 
-        if state.synced.not() {
-            // TODO: Use progress bar instead of static text.
+        if !state.synced() {
             frame.render_widget(progress_bar::new()?, layout[2]);
         } else {
             let outdated_krate_count = state.depot.outdated_krate_count()?;
@@ -73,7 +71,7 @@ impl Selectable for Start {
             (_, KeyCode::Esc | KeyCode::Char('q'))
             | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => app.quit(),
             (_, KeyCode::Char('c')) => {
-                if app.state.synced {
+                if app.state.synced() {
                     app.view = View::Catalog(Catalog)
                 }
             }

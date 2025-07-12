@@ -69,7 +69,7 @@ fn render_right(krate: &Krate, frame: &mut Frame, area: Rc<[Rect]>) -> Result<()
     // NOTE: This assumes every crate must have a description.
     // This is true for crates that have been uploaded to crates.io, but it might break for local
     // crates that don't have a description yet.
-    if !krate.info.description.is_empty() {
+    if !krate.krate_info.info.description.is_empty() {
         render_krate_summary(krate, frame, area[0])?;
     }
 
@@ -106,24 +106,24 @@ fn render_krate_summary(
     area: Rect,
 ) -> Result<(), Error> {
     let mut lines = vec![];
-    let d = &krate.info.description;
-    let t = &krate.info.tags.to_string();
+    let d = &krate.krate_info.info.description;
+    let t = &krate.krate_info.info.tags.to_string();
     let description = vec![Span::styled(d, DEFAULT_STYLE)];
     let spacer = vec![Span::styled("\n", DEFAULT_STYLE)];
     let tags = text_with_title(" Tags", t)?;
-    let license = text_with_title("󰿃 License", &krate.info.license)?;
-    let rv = match &krate.info.rust_version {
+    let license = text_with_title("󰿃 License", &krate.krate_info.info.license)?;
+    let rv = match &krate.krate_info.info.rust_version {
         Some(v) => v.to_string(),
         None => "unknown".to_string(),
     };
     let rust_version = text_with_title(" Rust version", &rv)?;
-    let docs = text_with_title("󰈙 Documentation", &krate.info.documentation)?;
-    let hp = text_with_title("󰋜 Homepage", &krate.info.homepage)?;
-    let repo = text_with_title("󰳏 Repository", &krate.info.repository)?;
+    let docs = text_with_title("󰈙 Documentation", &krate.krate_info.info.documentation)?;
+    let hp = text_with_title("󰋜 Homepage", &krate.krate_info.info.homepage)?;
+    let repo = text_with_title("󰳏 Repository", &krate.krate_info.info.repository)?;
 
     lines.push(Line::from(description));
     lines.push(Line::from(spacer));
-    if !&krate.info.tags.0.is_empty() {
+    if !&krate.krate_info.info.tags.0.is_empty() {
         lines.push(Line::from(tags));
     }
     lines.push(Line::from(license));
