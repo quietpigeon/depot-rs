@@ -4,9 +4,8 @@ use crate::keys::key_handler;
 use crate::ui::{render, views::View};
 use color_eyre::Result;
 use crossterm::event::{Event, KeyEventKind};
-use ratatui::{CompletedFrame, DefaultTerminal};
-use std::ops::Not;
-use std::sync::mpsc::{self, channel};
+use ratatui::DefaultTerminal;
+use std::sync::mpsc::channel;
 use std::time::Duration;
 
 /// The main application which holds the state and logic of the application.
@@ -15,14 +14,16 @@ pub struct App {
     running: bool,
     pub state: DepotState,
     pub view: View,
-    pub tx: mpsc::Sender<AppMessage>,
-    pub rx: mpsc::Receiver<AppMessage>,
+    pub tx: std::sync::mpsc::Sender<AppMessage>,
+    pub rx: std::sync::mpsc::Receiver<AppMessage>,
+    has_initialized: bool,
 }
 
 impl App {
     /// Construct a new instance of [`App`].
     pub fn new() -> Self {
         let (tx, rx) = channel::<AppMessage>();
+        let has_initialized = false;
 
         Self {
             running: true,
@@ -30,6 +31,7 @@ impl App {
             view: View::default(),
             tx,
             rx,
+            has_initialized,
         }
     }
 
@@ -44,11 +46,9 @@ impl App {
         while self.running {
             terminal.draw(|f| render(&mut self.view, &mut self.state, f).unwrap())?;
             self.handle_crossterm_events().await?;
+            self.handle_init().await?;
 
-            if self.state.synced.not() {
-                self.state.sync()?;
-            }
-
+            // Non-blocking receiver.
             if let Ok(message) = self.rx.try_recv() {
                 handle_app_message(&mut self.state, message)?;
                 // Redraw to update components.
@@ -57,6 +57,16 @@ impl App {
                 })?;
             }
         }
+
+        Ok(())
+    }
+
+    /// Run only once when the app initializes.
+    async fn handle_init(&mut self) -> Result<(), Error> {
+        if !self.has_initialized {
+            self.state.sync().await?;
+        }
+        self.has_initialized = true;
 
         Ok(())
     }

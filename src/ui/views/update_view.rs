@@ -25,7 +25,7 @@ impl Drawable for Update {
                     "{}  {} -> {}",
                     krate.name.clone(),
                     krate.version.clone(),
-                    krate.info.latest_version.clone()
+                    krate.krate_info.info.latest_version.clone()
                 ))
                 .fg(DEFAULT_COLOR)
             })

@@ -19,8 +19,6 @@ pub struct DepotState {
     pub list_state: ListState,
     pub update_list_state: ListState,
     // Status of fetching crate info.
-    pub sync_status: i64,
-    pub synced: bool,
 }
 
 impl Default for DepotState {
@@ -28,29 +26,38 @@ impl Default for DepotState {
         let depot = Depot::get().expect("failed to initialize `DepotState`");
         let list_state = ListState::default();
         let update_list_state = ListState::default();
-        let sync_status = i64::default();
-        let synced = false;
 
         Self {
             depot,
             list_state,
             update_list_state,
-            sync_status,
-            synced,
         }
     }
 }
 
 impl DepotState {
-    pub fn sync(&mut self) -> Result<(), Error> {
-        let crate_count = self.depot.crate_count();
+    pub async fn sync(&mut self) -> Result<(), Error> {
+        let hold: Vec<_> = self
+            .depot
+            .store
+            .0
+            .iter()
+            .map(|k| NamedKrateInfo::get(&k.name))
+            .collect();
+        let results = futures::future::try_join_all(hold).await?;
+
         for krate in &mut self.depot.store.0 {
-            krate.info = KrateInfo::get(&krate.name)?;
-            self.sync_status += 1;
-            self.synced = self.sync_status == crate_count;
+            let info = results.iter().find(|&ki| ki.name == krate.name);
+            if let Some(ki) = info {
+                krate.krate_info = ki.clone();
+            }
         }
 
         Ok(())
+    }
+
+    pub fn synced(&self) -> bool {
+        self.depot.store.0.iter().all(|k| k.krate_info.info.synced)
     }
 
     pub fn sync_krate(&mut self, name: &str) -> Result<(), Error> {
@@ -116,12 +123,12 @@ pub struct Krate {
     pub name: String,
     pub version: SemVer,
     pub binaries: Vec<String>,
-    pub info: KrateInfo,
+    pub krate_info: NamedKrateInfo,
 }
 
 impl Krate {
     pub fn is_latest(&self) -> bool {
-        self.info.latest_version == self.version
+        self.krate_info.info.latest_version == self.version
     }
 
     pub fn update_version(&mut self) -> Result<(), Error> {
@@ -174,6 +181,26 @@ fn parse_ver<'a>(s: &'a str, n: &'a str) -> IResult<&'a str, SemVer> {
     Ok((s, v))
 }
 
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub struct NamedKrateInfo {
+    pub name: String,
+    pub info: KrateInfo,
+}
+
+impl NamedKrateInfo {
+    /// Get the info of the given crate.
+    pub async fn get(name: &str) -> Result<Self, Error> {
+        let s = search_crate(name).await?;
+        let info = KrateInfo::parse(&s)?.1;
+        let ki = Self {
+            name: name.to_string(),
+            info,
+        };
+
+        Ok(ki)
+    }
+}
+
 /// Contains latest information about the crate from crates.io.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct KrateInfo {
@@ -188,17 +215,10 @@ pub struct KrateInfo {
     pub homepage: String,
     pub repository: String,
     pub crates_io: String,
+    pub synced: bool,
 }
 
 impl KrateInfo {
-    /// Get the info of the given crate.
-    pub fn get(name: &str) -> Result<KrateInfo, Error> {
-        let s = search_crate(name)?;
-        let info = Self::parse(&s)?.1;
-
-        Ok(info)
-    }
-
     fn parse(s: &str) -> IResult<&str, Self> {
         let (s, _) = alphanumeric1_with_hyphen(s)?;
         let (s, _) = multispace0(s)?;
@@ -232,6 +252,7 @@ impl KrateInfo {
         let (s, crates_io) = map(take_until("\n"), String::from).parse(s)?;
 
         let description = description.trim_end().to_string();
+        let synced = true;
 
         let k = Self {
             description,
@@ -243,6 +264,7 @@ impl KrateInfo {
             homepage,
             repository,
             crates_io,
+            synced,
         };
 
         Ok((s, k))
@@ -435,6 +457,7 @@ foo v0.1.0:
                 homepage: "https://moreenh.me/pages/projects/cargo-thesaurust".to_string(),
                 repository: "https://github.com/quietpigeon/cargo-thesaurust".to_string(),
                 crates_io: "https://crates.io/crates/cargo-thesaurust/0.1.2".to_string(),
+                synced: true
             }
         )
     }
@@ -464,6 +487,7 @@ foo v0.1.0:
                 homepage: "https://moreenh.me/pages/projects/cargo-thesaurust".to_string(),
                 repository: "https://github.com/quietpigeon/cargo-thesaurust".to_string(),
                 crates_io: "https://crates.io/crates/cargo-thesaurust/0.1.2".to_string(),
+                synced: true
             }
         )
     }
