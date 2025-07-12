@@ -19,7 +19,6 @@ pub async fn search_crate(c: &str) -> Result<String, Error> {
     let stdout = Command::new("cargo")
         .arg("info")
         .arg(c)
-        .arg("--verbose")
         .output()?
         .stdout
         .apply(String::from_utf8)?;
