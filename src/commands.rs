@@ -15,7 +15,7 @@ pub fn list_crates() -> Result<String, Error> {
 
 /// Searches for a specific crate on crates.io.
 /// Gives the latest version and a short description.
-pub async fn search_crate(c: &str) -> Result<String, Error> {
+pub fn search_crate(c: &str) -> Result<String, Error> {
     let stdout = Command::new("cargo")
         .arg("info")
         .arg(c)

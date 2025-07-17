@@ -10,7 +10,8 @@ mod ui;
 async fn main() -> color_eyre::Result<()> {
     color_eyre::install()?;
     let terminal = ratatui::init();
-    let result = app::App::new().run(terminal).await;
+    let tick_rate = std::time::Duration::from_millis(100);
+    let result = app::App::new().run(terminal, tick_rate).await;
     ratatui::restore();
 
     Ok(result?)
