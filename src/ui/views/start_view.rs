@@ -40,7 +40,7 @@ impl Drawable for Start {
         );
 
         if !state.synced() {
-            frame.render_widget(progress_bar::new()?, layout[2]);
+            frame.render_widget(progress_bar::new(&state.throbber_state)?, layout[2]);
         } else {
             let outdated_krate_count = state.depot.outdated_krate_count()?;
             let outdated_crate_str = if outdated_krate_count != 0 {

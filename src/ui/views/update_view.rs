@@ -1,5 +1,6 @@
 use super::{View, start_view::Start};
-use crate::app::AppMessage;
+use crate::depot::DepotMessage;
+use crate::errors::ChannelError;
 use crate::keys::Selectable;
 use crate::ui::{DEFAULT_COLOR, DEFAULT_STYLE, Drawable, HIGHLIGHT_STYLE};
 use crossterm::event::KeyCode;
@@ -77,11 +78,13 @@ impl Selectable for Update {
                 if let Some(ix) = app.state.update_list_state.selected() {
                     let k = &app.state.depot.get_outdated_krates()?.0[ix];
                     let kk = k.clone();
-                    let tx = app.tx.clone();
+                    let tx = app.state.tx.clone();
                     tokio::spawn(async move {
                         let _ = match kk.update().await {
-                            Ok(_) => tx.send(AppMessage::UpdateCrateSuccess { krate: kk.name }),
-                            Err(_) => tx.send(AppMessage::UpdateCrateFailed { krate: kk.name }),
+                            Ok(_) => tx.send(DepotMessage::KrateUpdate { krate: kk.name }),
+                            Err(_) => {
+                                tx.send(DepotMessage::KrateError(ChannelError::KrateUpdateError))
+                            }
                         };
                     });
                 }

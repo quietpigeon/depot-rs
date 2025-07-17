@@ -1,5 +1,5 @@
 use crate::commands::{install_crate, list_crates, search_crate, uninstall_crate};
-use crate::errors::Error;
+use crate::errors::{ChannelError, Error};
 use crate::parser::{alphanumeric1_with_hyphen, ws, ws2};
 use nom::bytes::complete::{tag, take_until};
 use nom::character::complete::char;
@@ -11,14 +11,37 @@ use nom::sequence::preceded;
 use nom::{IResult, Parser, multi::separated_list1};
 use ratatui::widgets::ListState;
 use std::fmt::Display;
+use std::sync::mpsc::channel;
 use versions::SemVer;
+
+pub enum DepotMessage {
+    KrateInfoResponse(Vec<NamedKrateInfo>),
+    KrateUpdate { krate: String },
+    KrateUninstall,
+    KrateError(ChannelError),
+}
+
+impl DepotMessage {
+    pub fn handle(self, state: &mut DepotState) -> Result<(), Error> {
+        match self {
+            DepotMessage::KrateInfoResponse(r) => state.sync(r)?,
+            DepotMessage::KrateUpdate { krate } => state.sync_krate(&krate)?,
+            DepotMessage::KrateUninstall => {}
+            DepotMessage::KrateError(e) => return Err(Error::HandleKrate(e)),
+        }
+
+        Ok(())
+    }
+}
 
 #[derive(Debug)]
 pub struct DepotState {
     pub depot: Depot,
     pub list_state: ListState,
     pub update_list_state: ListState,
-    // Status of fetching crate info.
+    pub throbber_state: throbber_widgets_tui::ThrobberState,
+    pub tx: std::sync::mpsc::Sender<DepotMessage>,
+    pub rx: std::sync::mpsc::Receiver<DepotMessage>,
 }
 
 impl Default for DepotState {
@@ -26,32 +49,33 @@ impl Default for DepotState {
         let depot = Depot::get().expect("failed to initialize `DepotState`");
         let list_state = ListState::default();
         let update_list_state = ListState::default();
+        let throbber_state = throbber_widgets_tui::ThrobberState::default();
+        let (tx, rx) = channel::<DepotMessage>();
 
         Self {
             depot,
             list_state,
             update_list_state,
+            throbber_state,
+            tx,
+            rx,
         }
     }
 }
 
 impl DepotState {
-    pub async fn sync(&mut self) -> Result<(), Error> {
-        let hold: Vec<_> = self
-            .depot
-            .store
-            .0
-            .iter()
-            .map(|k| NamedKrateInfo::get(&k.name))
-            .collect();
-        let results = futures::future::try_join_all(hold).await?;
+    pub fn load_info(&self) -> Result<(), Error> {
+        let names: Vec<String> = self.depot.store.0.iter().map(|k| k.name.clone()).collect();
+        let tx = self.tx.clone();
 
-        for krate in &mut self.depot.store.0 {
-            let info = results.iter().find(|&ki| ki.name == krate.name);
-            if let Some(ki) = info {
-                krate.krate_info = ki.clone();
+        tokio::spawn(async move {
+            let resp: Result<Vec<NamedKrateInfo>, Error> =
+                names.iter().map(|n| NamedKrateInfo::get(n)).collect();
+            match resp {
+                Ok(r) => tx.send(DepotMessage::KrateInfoResponse(r)),
+                Err(_) => tx.send(DepotMessage::KrateError(ChannelError::KrateInfoError)),
             }
-        }
+        });
 
         Ok(())
     }
@@ -65,6 +89,17 @@ impl DepotState {
             k.update_version()?;
         }
 
+        Ok(())
+    }
+
+    fn sync(&mut self, info: Vec<NamedKrateInfo>) -> Result<(), Error> {
+        for krate in &mut self.depot.store.0 {
+            if let Some(ki) = info.iter().find(|&i| krate.name == i.name) {
+                krate.krate_info = ki.clone();
+            } else {
+                return Err(Error::Unexpected("unmatched name".to_string()));
+            }
+        }
         Ok(())
     }
 }
@@ -189,8 +224,8 @@ pub struct NamedKrateInfo {
 
 impl NamedKrateInfo {
     /// Get the info of the given crate.
-    pub async fn get(name: &str) -> Result<Self, Error> {
-        let s = search_crate(name).await?;
+    pub fn get(name: &str) -> Result<Self, Error> {
+        let s = search_crate(name)?;
         let info = KrateInfo::parse(&s)?.1;
         let ki = Self {
             name: name.to_string(),

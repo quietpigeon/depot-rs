@@ -1,11 +1,13 @@
 use crate::{errors::Error, ui::DEFAULT_STYLE};
 use ratatui::widgets::Paragraph;
+use throbber_widgets_tui::{Throbber, ThrobberState};
 
-pub fn new() -> Result<Paragraph<'static>, Error> {
-    let text = "fetching crates...";
-    let p = Paragraph::new(text)
+pub fn new(throbber_state: &ThrobberState) -> Result<Paragraph<'static>, Error> {
+    let throbber = Throbber::default()
+        .label("fetching crates")
         .style(DEFAULT_STYLE)
-        .alignment(ratatui::layout::Alignment::Center);
+        .to_line(&throbber_state);
+    let text = Paragraph::new(throbber).centered();
 
-    Ok(p)
+    Ok(text)
 }
