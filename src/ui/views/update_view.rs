@@ -38,6 +38,7 @@ impl Drawable for Update {
                     .title("Outdated crates")
                     .style(DEFAULT_STYLE),
             )
+            .highlight_symbol("* ")
             .highlight_style(HIGHLIGHT_STYLE)
             .highlight_spacing(ratatui::widgets::HighlightSpacing::Always);
 
