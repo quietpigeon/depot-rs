@@ -30,17 +30,17 @@ impl From<nom::Err<nom::error::Error<&str>>> for Error {
 
 #[derive(Debug)]
 pub enum ChannelError {
-    KrateUpdateError,
-    KrateUninstallError,
-    KrateInfoError,
+    UpdateKrate,
+    UninstallKrate,
+    KrateInfo,
 }
 
 impl fmt::Display for ChannelError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            ChannelError::KrateUpdateError => write!(f, "failed to update krate"),
-            ChannelError::KrateUninstallError => write!(f, "failed to uninstall krate"),
-            ChannelError::KrateInfoError => write!(f, "failed to fetch krate"),
+            ChannelError::UpdateKrate => write!(f, "failed to update krate"),
+            ChannelError::UninstallKrate => write!(f, "failed to uninstall krate"),
+            ChannelError::KrateInfo => write!(f, "failed to fetch krate"),
         }
     }
 }

@@ -6,7 +6,7 @@ pub fn new(throbber_state: &ThrobberState) -> Result<Paragraph<'static>, Error> 
     let throbber = Throbber::default()
         .label("fetching crates")
         .style(DEFAULT_STYLE)
-        .to_line(&throbber_state);
+        .to_line(throbber_state);
     let text = Paragraph::new(throbber).centered();
 
     Ok(text)

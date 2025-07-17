@@ -197,9 +197,9 @@ fn delete_selected_crate(app: &mut crate::app::App) {
         let tx = app.state.tx.clone();
         tokio::spawn(async move {
             let _ = match &kk.uninstall().await {
-                Ok(_) => tx.send(DepotMessage::KrateUninstall),
-                Err(_) => tx.send(DepotMessage::KrateError(
-                    crate::errors::ChannelError::KrateUninstallError,
+                Ok(_) => tx.send(DepotMessage::UninstallKrate),
+                Err(_) => tx.send(DepotMessage::DepotError(
+                    crate::errors::ChannelError::UninstallKrate,
                 )),
             };
         });

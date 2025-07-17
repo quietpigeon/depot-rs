@@ -15,19 +15,19 @@ use std::sync::mpsc::channel;
 use versions::SemVer;
 
 pub enum DepotMessage {
-    KrateInfoResponse(Vec<NamedKrateInfo>),
-    KrateUpdate { krate: String },
-    KrateUninstall,
-    KrateError(ChannelError),
+    FetchKrateInfo(Vec<NamedKrateInfo>),
+    UpdateKrate { krate: String },
+    UninstallKrate,
+    DepotError(ChannelError),
 }
 
 impl DepotMessage {
     pub fn handle(self, state: &mut DepotState) -> Result<(), Error> {
         match self {
-            DepotMessage::KrateInfoResponse(r) => state.sync(r)?,
-            DepotMessage::KrateUpdate { krate } => state.sync_krate(&krate)?,
-            DepotMessage::KrateUninstall => {}
-            DepotMessage::KrateError(e) => return Err(Error::HandleKrate(e)),
+            DepotMessage::FetchKrateInfo(r) => state.sync(r)?,
+            DepotMessage::UpdateKrate { krate } => state.sync_krate(&krate)?,
+            DepotMessage::UninstallKrate => {}
+            DepotMessage::DepotError(e) => return Err(Error::HandleKrate(e)),
         }
 
         Ok(())
@@ -72,8 +72,8 @@ impl DepotState {
             let resp: Result<Vec<NamedKrateInfo>, Error> =
                 names.iter().map(|n| NamedKrateInfo::get(n)).collect();
             match resp {
-                Ok(r) => tx.send(DepotMessage::KrateInfoResponse(r)),
-                Err(_) => tx.send(DepotMessage::KrateError(ChannelError::KrateInfoError)),
+                Ok(r) => tx.send(DepotMessage::FetchKrateInfo(r)),
+                Err(_) => tx.send(DepotMessage::DepotError(ChannelError::KrateInfo)),
             }
         });
 

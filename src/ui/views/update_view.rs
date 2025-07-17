@@ -81,10 +81,8 @@ impl Selectable for Update {
                     let tx = app.state.tx.clone();
                     tokio::spawn(async move {
                         let _ = match kk.update().await {
-                            Ok(_) => tx.send(DepotMessage::KrateUpdate { krate: kk.name }),
-                            Err(_) => {
-                                tx.send(DepotMessage::KrateError(ChannelError::KrateUpdateError))
-                            }
+                            Ok(_) => tx.send(DepotMessage::UpdateKrate { krate: kk.name }),
+                            Err(_) => tx.send(DepotMessage::DepotError(ChannelError::UpdateKrate)),
                         };
                     });
                 }

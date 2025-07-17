@@ -2,7 +2,7 @@ use super::catalog_view::Catalog;
 use super::update_view::Update;
 use super::{Drawable, View, banner, center};
 use crate::ui::DEFAULT_STYLE;
-use crate::ui::components::{progress_bar, select_menu};
+use crate::ui::components::{load_progress, select_menu};
 use crate::{app::App, depot::DepotState, errors::Error, keys::Selectable};
 use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::Frame;
@@ -40,7 +40,7 @@ impl Drawable for Start {
         );
 
         if !state.synced() {
-            frame.render_widget(progress_bar::new(&state.throbber_state)?, layout[2]);
+            frame.render_widget(load_progress::new(&state.throbber_state)?, layout[2]);
         } else {
             let outdated_krate_count = state.depot.outdated_krate_count()?;
             let outdated_crate_str = if outdated_krate_count != 0 {
