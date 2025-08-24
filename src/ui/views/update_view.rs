@@ -3,7 +3,7 @@ use crate::depot::DepotMessage;
 use crate::errors::ChannelError;
 use crate::keys::Selectable;
 use crate::ui::{DEFAULT_COLOR, DEFAULT_STYLE, Drawable, HIGHLIGHT_STYLE};
-use crossterm::event::KeyCode;
+use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::layout::Margin;
 use ratatui::style::Stylize;
 use ratatui::widgets::{Block, List, ListItem};
@@ -53,10 +53,7 @@ impl Drawable for Update {
 }
 
 impl Selectable for Update {
-    async fn select(
-        app: &mut crate::app::App,
-        key: &crossterm::event::KeyEvent,
-    ) -> Result<(), crate::errors::Error> {
+    async fn select(app: &mut crate::app::App, key: &KeyEvent) -> Result<(), crate::errors::Error> {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc | KeyCode::Char('q')) => {
                 app.view = View::Start(Start);
@@ -81,10 +78,12 @@ impl Selectable for Update {
                     let kk = k.clone();
                     let tx = app.state.tx.clone();
                     tokio::spawn(async move {
-                        let _ = match kk.update().await {
+                        let res = kk.update().await;
+                        let _ = match res {
                             Ok(_) => tx.send(DepotMessage::UpdateKrate { krate: kk.name }),
                             Err(_) => tx.send(DepotMessage::DepotError(ChannelError::UpdateKrate)),
                         };
+                        println!("Send result: {:?}", res);
                     });
                 }
             }

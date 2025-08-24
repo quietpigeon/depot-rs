@@ -3,7 +3,7 @@ use crate::errors::Error;
 use crate::ui::views::catalog_view::Catalog;
 use crate::ui::views::update_view::Update;
 use crate::ui::views::{View, start_view::Start};
-use crossterm::event::KeyEvent;
+use ratatui::crossterm::event::KeyEvent;
 
 /// Handles the key events and updates the state of [`App`].
 pub async fn key_handler(app: &mut App, key: KeyEvent) -> Result<(), Error> {
