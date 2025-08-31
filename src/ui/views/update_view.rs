@@ -1,6 +1,7 @@
 use super::{View, start_view::Start};
 use crate::depot::DepotMessage;
 use crate::errors::ChannelError;
+use crate::events::Event;
 use crate::keys::Selectable;
 use crate::ui::{DEFAULT_COLOR, DEFAULT_STYLE, Drawable, HIGHLIGHT_STYLE};
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
@@ -76,14 +77,19 @@ impl Selectable for Update {
                 if let Some(ix) = app.state.update_list_state.selected() {
                     let k = &app.state.depot.get_outdated_krates()?.0[ix];
                     let kk = k.clone();
-                    let tx = app.state.tx.clone();
+                    let tx = app.events.get_sender();
+                    // Decouples the update logic to make sure this doesn't block the UI
                     tokio::spawn(async move {
                         let res = kk.update().await;
                         let _ = match res {
-                            Ok(_) => tx.send(DepotMessage::UpdateKrate { krate: kk.name }),
-                            Err(_) => tx.send(DepotMessage::DepotError(ChannelError::UpdateKrate)),
+                            Ok(_) => tx.send(Event::App(crate::events::AppEvent::Depot(
+                                DepotMessage::UpdateKrate { krate: kk.name },
+                            ))),
+
+                            Err(_) => tx.send(Event::App(crate::events::AppEvent::Depot(
+                                DepotMessage::DepotError(ChannelError::UpdateKrate),
+                            ))),
                         };
-                        println!("Send result: {:?}", res);
                     });
                 }
             }

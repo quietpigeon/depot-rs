@@ -1,11 +1,9 @@
-use color_eyre::eyre::OptionExt;
+use crate::{depot::DepotMessage, errors::Error};
 use crossterm::event::EventStream;
 use futures::{FutureExt, StreamExt};
 use ratatui::crossterm::event::Event as CrosstermEvent;
 use std::time::Duration;
 use tokio::sync::mpsc;
-
-use crate::depot::DepotMessage;
 
 /// The frequency at which tick events are emitted.
 const TICK_FPS: f64 = 10.0;
@@ -65,21 +63,8 @@ impl EventHandler {
     /// This function returns an error if the sender channel is disconnected. This can happen if an
     /// error occurs in the event thread. In practice, this should not happen unless there is a
     /// problem with the underlying terminal.
-    pub async fn next(&mut self) -> color_eyre::Result<Event> {
-        self.receiver
-            .recv()
-            .await
-            .ok_or_eyre("Failed to receive event")
-    }
-
-    /// Queue an app event to be sent to the event receiver.
-    ///
-    /// This is useful for sending events to the event handler which will be processed by the next
-    /// iteration of the application's event loop.
-    pub fn send(&mut self, app_event: AppEvent) {
-        // Ignore the result as the reciever cannot be dropped while this struct still has a
-        // reference to it
-        let _ = self.sender.send(Event::App(app_event));
+    pub async fn next(&mut self) -> Result<Event, Error> {
+        self.receiver.recv().await.ok_or(Error::ReceiveEvent)
     }
 
     pub fn get_sender(&self) -> mpsc::UnboundedSender<Event> {
@@ -102,7 +87,7 @@ impl EventTask {
     /// Runs the event thread.
     ///
     /// This function emits tick events at a fixed rate and polls for crossterm events in between.
-    async fn run(self) -> color_eyre::Result<()> {
+    async fn run(self) -> Result<(), Error> {
         let tick_rate = Duration::from_secs_f64(1.0 / TICK_FPS);
         let mut reader = EventStream::new();
         let mut tick = tokio::time::interval(tick_rate);
@@ -121,6 +106,7 @@ impl EventTask {
               }
             };
         }
+
         Ok(())
     }
 

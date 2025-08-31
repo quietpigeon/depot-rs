@@ -159,10 +159,7 @@ impl Krate {
     }
 
     pub async fn update(&self) -> Result<(), Error> {
-        println!("updating");
         install_crate(&self.name).await?;
-        println!("updated");
-
         Ok(())
     }
 

@@ -33,7 +33,6 @@ pub async fn install_crate(c: &str) -> Result<(), Error> {
         .arg("--locked")
         .output()
         .await?;
-    println!("done");
 
     Ok(())
 }

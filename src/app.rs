@@ -9,7 +9,7 @@ use ratatui::DefaultTerminal;
 #[derive(Debug)]
 pub struct App {
     running: bool,
-    events: EventHandler,
+    pub events: EventHandler,
     pub state: DepotState,
     pub view: View,
     has_initialized: bool,
@@ -35,10 +35,10 @@ impl App {
     }
 
     /// Run the application's main loop.
-    pub async fn run(mut self, mut terminal: DefaultTerminal) -> color_eyre::Result<()> {
+    pub async fn run(mut self, mut terminal: DefaultTerminal) -> Result<(), Error> {
         while self.running {
             terminal.draw(|f| render(&mut self.view, &mut self.state, f).unwrap())?;
-            self.handle_init().unwrap();
+            self.handle_init()?;
             match self.events.next().await? {
                 Event::Tick => self.on_tick(),
                 Event::Crossterm(event) => match event {
@@ -47,9 +47,13 @@ impl App {
                     }
                     _ => {}
                 },
-                Event::App(event) => match event {
-                    AppEvent::Depot(msg) => msg.handle(&mut self.state).unwrap(),
-                },
+                Event::App(event) => {
+                    match event {
+                        AppEvent::Depot(msg) => msg.handle(&mut self.state)?,
+                    };
+                    // Redraw.
+                    terminal.draw(|f| render(&mut self.view, &mut self.state, f).unwrap())?;
+                }
             }
         }
         Ok(())

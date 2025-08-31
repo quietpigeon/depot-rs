@@ -5,21 +5,18 @@ use thiserror::Error;
 pub enum Error {
     #[error("failed to run command")]
     Cli(#[from] std::io::Error),
-
     #[error("failed to run command")]
     FromUtf8(#[from] FromUtf8Error),
-
     #[error("failed to parse cargo command stdout: {0}")]
     Parser(nom::Err<nom::error::Error<String>>),
-
     #[error("failed to create text")]
     DisplayFmt(#[from] std::fmt::Error),
-
     #[error("unexpected error occured for: {0}")]
     Unexpected(String),
-
     #[error("operation failed: {0}")]
     HandleKrate(ChannelError),
+    #[error("failed to receive event")]
+    ReceiveEvent,
 }
 
 impl From<nom::Err<nom::error::Error<&str>>> for Error {
