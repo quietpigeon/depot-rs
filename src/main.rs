@@ -14,5 +14,5 @@ async fn main() -> Result<(), Error> {
     let result = app::App::new().run(terminal).await;
     ratatui::restore();
 
-    Ok(result?)
+    result
 }

@@ -1,7 +1,7 @@
 use super::{View, start_view::Start};
 use crate::depot::DepotMessage;
-use crate::errors::ChannelError;
-use crate::events::Event;
+use crate::errors::{ChannelError, Error};
+use crate::events::{AppEvent, Event};
 use crate::keys::Selectable;
 use crate::ui::{DEFAULT_COLOR, DEFAULT_STYLE, Drawable, HIGHLIGHT_STYLE};
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
@@ -54,7 +54,7 @@ impl Drawable for Update {
 }
 
 impl Selectable for Update {
-    async fn select(app: &mut crate::app::App, key: &KeyEvent) -> Result<(), crate::errors::Error> {
+    async fn select(app: &mut crate::app::App, key: &KeyEvent) -> Result<(), Error> {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc | KeyCode::Char('q')) => {
                 app.view = View::Start(Start);
@@ -81,15 +81,16 @@ impl Selectable for Update {
                     // Decouples the update logic to make sure this doesn't block the UI
                     tokio::spawn(async move {
                         let res = kk.update().await;
-                        let _ = match res {
-                            Ok(_) => tx.send(Event::App(crate::events::AppEvent::Depot(
-                                DepotMessage::UpdateKrate { krate: kk.name },
-                            ))),
-
-                            Err(_) => tx.send(Event::App(crate::events::AppEvent::Depot(
+                        match res {
+                            Ok(_) => {
+                                tx.send(Event::App(AppEvent::Depot(DepotMessage::UpdateKrate {
+                                    krate: kk.name,
+                                })))
+                            }
+                            Err(_) => tx.send(Event::App(AppEvent::Depot(
                                 DepotMessage::DepotError(ChannelError::UpdateKrate),
                             ))),
-                        };
+                        }
                     });
                 }
             }

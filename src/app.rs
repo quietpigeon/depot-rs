@@ -41,12 +41,11 @@ impl App {
             self.handle_init()?;
             match self.events.next().await? {
                 Event::Tick => self.on_tick(),
-                Event::Crossterm(event) => match event {
-                    ratatui::crossterm::event::Event::Key(key_event) => {
+                Event::Crossterm(event) => {
+                    if let ratatui::crossterm::event::Event::Key(key_event) = event {
                         key_handler(&mut self, key_event).await?
                     }
-                    _ => {}
-                },
+                }
                 Event::App(event) => {
                     match event {
                         AppEvent::Depot(msg) => msg.handle(&mut self.state)?,
