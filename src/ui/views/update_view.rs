@@ -1,9 +1,10 @@
 use super::{View, start_view::Start};
 use crate::depot::DepotMessage;
-use crate::errors::ChannelError;
+use crate::errors::{ChannelError, Error};
+use crate::events::{AppEvent, Event};
 use crate::keys::Selectable;
 use crate::ui::{DEFAULT_COLOR, DEFAULT_STYLE, Drawable, HIGHLIGHT_STYLE};
-use crossterm::event::KeyCode;
+use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::layout::Margin;
 use ratatui::style::Stylize;
 use ratatui::widgets::{Block, List, ListItem};
@@ -38,6 +39,7 @@ impl Drawable for Update {
                     .title("Outdated crates")
                     .style(DEFAULT_STYLE),
             )
+            .highlight_symbol("* ")
             .highlight_style(HIGHLIGHT_STYLE)
             .highlight_spacing(ratatui::widgets::HighlightSpacing::Always);
 
@@ -52,10 +54,7 @@ impl Drawable for Update {
 }
 
 impl Selectable for Update {
-    async fn select(
-        app: &mut crate::app::App,
-        key: &crossterm::event::KeyEvent,
-    ) -> Result<(), crate::errors::Error> {
+    async fn select(app: &mut crate::app::App, key: &KeyEvent) -> Result<(), Error> {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc | KeyCode::Char('q')) => {
                 app.view = View::Start(Start);
@@ -78,12 +77,20 @@ impl Selectable for Update {
                 if let Some(ix) = app.state.update_list_state.selected() {
                     let k = &app.state.depot.get_outdated_krates()?.0[ix];
                     let kk = k.clone();
-                    let tx = app.state.tx.clone();
+                    let tx = app.events.get_sender();
+                    // Decouples the update logic to make sure this doesn't block the UI
                     tokio::spawn(async move {
-                        let _ = match kk.update().await {
-                            Ok(_) => tx.send(DepotMessage::UpdateKrate { krate: kk.name }),
-                            Err(_) => tx.send(DepotMessage::DepotError(ChannelError::UpdateKrate)),
-                        };
+                        let res = kk.update().await;
+                        match res {
+                            Ok(_) => {
+                                tx.send(Event::App(AppEvent::Depot(DepotMessage::UpdateKrate {
+                                    krate: kk.name,
+                                })))
+                            }
+                            Err(_) => tx.send(Event::App(AppEvent::Depot(
+                                DepotMessage::DepotError(ChannelError::UpdateKrate),
+                            ))),
+                        }
                     });
                 }
             }

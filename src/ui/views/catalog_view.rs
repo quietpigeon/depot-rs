@@ -1,9 +1,10 @@
 use super::{View, start_view::Start};
+use crate::app::App;
 use crate::depot::{DepotMessage, Krate};
 use crate::ui::{DEFAULT_COLOR, DEFAULT_STYLE, HIGHLIGHT_STYLE};
 use crate::{depot::DepotState, errors::Error, keys::Selectable, ui::Drawable};
-use crossterm::event::KeyCode;
 use ratatui::Frame;
+use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::layout::{Constraint, Layout, Margin, Rect};
 use ratatui::style::{Modifier, Style, Stylize};
 use ratatui::text::{Line, Span, Text};
@@ -153,10 +154,7 @@ fn text_with_title<'a>(title: &'a str, text: &'a str) -> Result<Vec<Span<'a>>, E
 }
 
 impl Selectable for Catalog {
-    async fn select(
-        app: &mut crate::app::App,
-        key: &crossterm::event::KeyEvent,
-    ) -> Result<(), crate::errors::Error> {
+    async fn select(app: &mut App, key: &KeyEvent) -> Result<(), Error> {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc | KeyCode::Char('q')) => app.view = View::Start(Start),
             // Here, we assume all of the crate info has been fetched.
@@ -189,7 +187,7 @@ fn select_previous(state: &mut DepotState) -> Result<(), Error> {
     Ok(())
 }
 
-fn delete_selected_crate(app: &mut crate::app::App) {
+fn delete_selected_crate(app: &mut App) {
     if let Some(ix) = app.state.list_state.selected() {
         app.state.list_state.select(None);
         let k = &app.state.depot.store.0[ix];

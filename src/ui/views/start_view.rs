@@ -4,8 +4,8 @@ use super::{Drawable, View, banner, center};
 use crate::ui::DEFAULT_STYLE;
 use crate::ui::components::{load_progress, select_menu};
 use crate::{app::App, depot::DepotState, errors::Error, keys::Selectable};
-use crossterm::event::{KeyCode, KeyModifiers};
 use ratatui::Frame;
+use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
 use ratatui::layout::Constraint;
 use ratatui::layout::Layout;
 use ratatui::text::Text;
@@ -66,7 +66,7 @@ impl Drawable for Start {
 }
 
 impl Selectable for Start {
-    async fn select(app: &mut App, key: &crossterm::event::KeyEvent) -> Result<(), Error> {
+    async fn select(app: &mut App, key: &KeyEvent) -> Result<(), Error> {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc | KeyCode::Char('q'))
             | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => app.quit(),

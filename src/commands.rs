@@ -27,11 +27,13 @@ pub fn search_crate(c: &str) -> Result<String, Error> {
 }
 
 pub async fn install_crate(c: &str) -> Result<(), Error> {
-    Command::new("cargo")
+    tokio::process::Command::new("cargo")
         .arg("install")
         .arg(c)
         .arg("--locked")
-        .output()?;
+        .output()
+        .await?;
+
     Ok(())
 }
 

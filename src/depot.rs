@@ -14,6 +14,7 @@ use std::fmt::Display;
 use std::sync::mpsc::channel;
 use versions::SemVer;
 
+#[derive(Debug, Clone)]
 pub enum DepotMessage {
     FetchKrateInfo(Vec<NamedKrateInfo>),
     UpdateKrate { krate: String },
@@ -41,7 +42,6 @@ pub struct DepotState {
     pub update_list_state: ListState,
     pub throbber_state: throbber_widgets_tui::ThrobberState,
     pub tx: std::sync::mpsc::Sender<DepotMessage>,
-    pub rx: std::sync::mpsc::Receiver<DepotMessage>,
 }
 
 impl Default for DepotState {
@@ -50,7 +50,7 @@ impl Default for DepotState {
         let list_state = ListState::default();
         let update_list_state = ListState::default();
         let throbber_state = throbber_widgets_tui::ThrobberState::default();
-        let (tx, rx) = channel::<DepotMessage>();
+        let (tx, _) = channel::<DepotMessage>();
 
         Self {
             depot,
@@ -58,28 +58,11 @@ impl Default for DepotState {
             update_list_state,
             throbber_state,
             tx,
-            rx,
         }
     }
 }
 
 impl DepotState {
-    pub fn load_info(&self) -> Result<(), Error> {
-        let names: Vec<String> = self.depot.store.0.iter().map(|k| k.name.clone()).collect();
-        let tx = self.tx.clone();
-
-        tokio::spawn(async move {
-            let resp: Result<Vec<NamedKrateInfo>, Error> =
-                names.iter().map(|n| NamedKrateInfo::get(n)).collect();
-            match resp {
-                Ok(r) => tx.send(DepotMessage::FetchKrateInfo(r)),
-                Err(_) => tx.send(DepotMessage::DepotError(ChannelError::KrateInfo)),
-            }
-        });
-
-        Ok(())
-    }
-
     pub fn synced(&self) -> bool {
         self.depot.store.0.iter().all(|k| k.krate_info.info.synced)
     }
@@ -176,7 +159,8 @@ impl Krate {
     }
 
     pub async fn update(&self) -> Result<(), Error> {
-        install_crate(&self.name).await
+        install_crate(&self.name).await?;
+        Ok(())
     }
 
     pub async fn uninstall(&self) -> Result<(), Error> {
