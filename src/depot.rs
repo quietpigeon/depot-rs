@@ -11,7 +11,7 @@ use nom::sequence::preceded;
 use nom::{IResult, Parser, multi::separated_list1};
 use ratatui::widgets::ListState;
 use std::fmt::Display;
-use std::sync::mpsc::channel;
+use throbber_widgets_tui::ThrobberState;
 use versions::SemVer;
 
 #[derive(Debug, Clone)]
@@ -40,8 +40,7 @@ pub struct DepotState {
     pub depot: Depot,
     pub list_state: ListState,
     pub update_list_state: ListState,
-    pub throbber_state: throbber_widgets_tui::ThrobberState,
-    pub tx: std::sync::mpsc::Sender<DepotMessage>,
+    pub throbber_state: ThrobberState,
 }
 
 impl Default for DepotState {
@@ -50,14 +49,12 @@ impl Default for DepotState {
         let list_state = ListState::default();
         let update_list_state = ListState::default();
         let throbber_state = throbber_widgets_tui::ThrobberState::default();
-        let (tx, _) = channel::<DepotMessage>();
 
         Self {
             depot,
             list_state,
             update_list_state,
             throbber_state,
-            tx,
         }
     }
 }
