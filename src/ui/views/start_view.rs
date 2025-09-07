@@ -6,8 +6,8 @@ use crate::ui::components::{load_progress, select_menu};
 use crate::{app::App, depot::DepotState, errors::Error, keys::Selectable};
 use ratatui::Frame;
 use ratatui::crossterm::event::{KeyCode, KeyEvent, KeyModifiers};
-use ratatui::layout::Constraint;
 use ratatui::layout::Layout;
+use ratatui::layout::{Constraint, Rect};
 use ratatui::text::Text;
 use ratatui::widgets::Paragraph;
 
@@ -15,7 +15,7 @@ use ratatui::widgets::Paragraph;
 pub struct Start;
 
 impl Drawable for Start {
-    fn render(state: &mut DepotState, frame: &mut Frame) -> Result<(), Error> {
+    fn render(&self, state: &mut DepotState, frame: &mut Frame) -> Result<(), Error> {
         let layout = Layout::default()
             .direction(ratatui::layout::Direction::Vertical)
             .constraints(vec![
@@ -61,6 +61,11 @@ impl Drawable for Start {
             frame.render_widget(select_menu::new()?, layout[3]);
         }
 
+        Ok(())
+    }
+
+    fn render_helpline(&self, _frame: &mut Frame, _area: Rect) -> Result<(), Error> {
+        // Nothing to show for now.
         Ok(())
     }
 }

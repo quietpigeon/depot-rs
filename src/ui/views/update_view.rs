@@ -4,12 +4,15 @@ use crate::depot::DepotMessage;
 use crate::errors::{ChannelError, Error};
 use crate::events::{AppEvent, Event};
 use crate::keys::Selectable;
-use crate::ui::{DEFAULT_PRIMARY_COLOR, DEFAULT_STYLE, Drawable, HIGHLIGHT_STYLE, render_helpline};
+use crate::ui::{
+    DEFAULT_PRIMARY_COLOR, DEFAULT_SECONDARY_COLOR, DEFAULT_STYLE, Drawable, HIGHLIGHT_STYLE,
+};
+use ratatui::Frame;
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
-use ratatui::layout::{Constraint, Direction, Layout, Margin};
+use ratatui::layout::{Constraint, Direction, Layout, Margin, Rect};
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::{Line, Span};
-use ratatui::widgets::{Block, List, ListItem};
+use ratatui::widgets::{Block, List, ListItem, Paragraph};
 use throbber_widgets_tui::Throbber;
 
 #[derive(Debug)]
@@ -17,6 +20,7 @@ pub struct Update;
 
 impl Drawable for Update {
     fn render(
+        &self,
         state: &mut crate::depot::DepotState,
         frame: &mut ratatui::Frame,
     ) -> Result<(), crate::errors::Error> {
@@ -75,7 +79,29 @@ impl Drawable for Update {
         let (main_area, footer) = (layout[0], layout[1]);
 
         frame.render_stateful_widget(krate_list, main_area, &mut state.update_list_state);
-        render_helpline(frame, footer)?;
+        self.render_helpline(frame, footer)?;
+
+        Ok(())
+    }
+
+    fn render_helpline(&self, frame: &mut Frame, area: Rect) -> Result<(), Error> {
+        let line = Line::from(vec![
+            Span::raw("Press "),
+            Span::raw("k/j").style(Style::new().fg(DEFAULT_SECONDARY_COLOR)),
+            Span::raw(" "),
+            Span::raw("to move up/down"),
+            Span::raw(", "),
+            Span::raw("ENTER").style(Style::new().fg(DEFAULT_SECONDARY_COLOR)),
+            Span::raw(" "),
+            Span::raw("to update crate"),
+            Span::raw(", "),
+            Span::raw("q").style(Style::new().fg(DEFAULT_SECONDARY_COLOR)),
+            Span::raw(" "),
+            Span::raw("to go back"),
+        ]);
+
+        let footer_bar = Paragraph::new(line);
+        frame.render_widget(footer_bar, area);
 
         Ok(())
     }
@@ -87,14 +113,14 @@ impl Selectable for Update {
             (_, KeyCode::Esc | KeyCode::Char('q')) => {
                 app.view = View::Start(Start);
             }
-            (_, KeyCode::Char('j')) => {
+            (_, KeyCode::Char('j')) | (_, KeyCode::Down) => {
                 if app.state.update_list_state.selected().is_none() {
                     app.state.update_list_state.select(Some(0))
                 } else {
                     app.state.update_list_state.select_next();
                 }
             }
-            (_, KeyCode::Char('k')) => {
+            (_, KeyCode::Char('k')) | (_, KeyCode::Up) => {
                 if app.state.update_list_state.selected().is_none() {
                     app.state.update_list_state.select(Some(0))
                 } else {
