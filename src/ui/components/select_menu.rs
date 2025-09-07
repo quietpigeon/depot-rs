@@ -1,6 +1,7 @@
-use crate::{errors::Error, ui::DEFAULT_STYLE};
+use crate::errors::Error;
+use crate::ui::{DEFAULT_SECONDARY_COLOR, DEFAULT_STYLE};
 use ratatui::{
-    style::{Color, Modifier, Style},
+    style::{Modifier, Style},
     text::{Line, Span},
     widgets::Paragraph,
 };
@@ -11,7 +12,7 @@ pub fn new() -> Result<Paragraph<'static>, Error> {
         Span::styled(
             "c",
             Style::default()
-                .fg(Color::LightBlue)
+                .fg(DEFAULT_SECONDARY_COLOR)
                 .add_modifier(Modifier::UNDERLINED),
         ),
         Span::styled("rates", DEFAULT_STYLE),
@@ -22,7 +23,7 @@ pub fn new() -> Result<Paragraph<'static>, Error> {
         Span::styled(
             "U",
             Style::default()
-                .fg(Color::LightBlue)
+                .fg(DEFAULT_SECONDARY_COLOR)
                 .add_modifier(Modifier::UNDERLINED),
         ),
         Span::styled("pdate crates", DEFAULT_STYLE),

@@ -3,11 +3,11 @@ use crate::app::App;
 use crate::depot::{DepotMessage, Krate};
 use crate::errors::ChannelError;
 use crate::events::{AppEvent, Event};
-use crate::ui::{DEFAULT_COLOR, DEFAULT_STYLE, HIGHLIGHT_STYLE};
+use crate::ui::{DEFAULT_PRIMARY_COLOR, DEFAULT_STYLE, HIGHLIGHT_STYLE, render_helpline};
 use crate::{depot::DepotState, errors::Error, keys::Selectable, ui::Drawable};
 use ratatui::Frame;
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
-use ratatui::layout::{Constraint, Layout, Margin, Rect};
+use ratatui::layout::{Constraint, Direction, Layout, Margin, Rect};
 use ratatui::style::{Modifier, Style, Stylize};
 use ratatui::text::{Line, Span, Text};
 use ratatui::widgets::{Block, BorderType, List, ListItem, Paragraph, Wrap};
@@ -22,11 +22,17 @@ impl Drawable for Catalog {
         frame: &mut ratatui::Frame,
     ) -> Result<(), crate::errors::Error> {
         let layout = Layout::default()
-            .direction(ratatui::layout::Direction::Horizontal)
-            .constraints(vec![Constraint::Percentage(30), Constraint::Fill(1)])
+            .direction(Direction::Vertical)
+            .constraints(vec![Constraint::Fill(1), Constraint::Length(1)])
             .split(frame.area().inner(Margin::new(5, 5)));
 
-        render_left(state, frame, layout[0])?;
+        let (main_area, footer) = (layout[0], layout[1]);
+        let main_layout = Layout::default()
+            .direction(Direction::Horizontal)
+            .constraints(vec![Constraint::Percentage(30), Constraint::Fill(1)])
+            .split(main_area);
+
+        render_left(state, frame, main_layout[0])?;
 
         if let Some(ix) = state.list_state.selected() {
             let krate = &state.depot.store.0[ix];
@@ -35,7 +41,7 @@ impl Drawable for Catalog {
                 .border_type(BorderType::Rounded)
                 .style(DEFAULT_STYLE)
                 .title(title);
-            let inner = r_block.inner(layout[1]);
+            let inner = r_block.inner(main_layout[1]);
             let right = Layout::default()
                 .direction(ratatui::layout::Direction::Vertical)
                 .constraints(vec![
@@ -54,13 +60,15 @@ impl Drawable for Catalog {
                 ])
                 .split(inner);
 
-            frame.render_widget(r_block, layout[1]);
+            frame.render_widget(r_block, main_layout[1]);
             render_right(krate, frame, right)?;
         }
+        render_helpline(frame, footer)?;
 
         Ok(())
     }
 }
+
 fn render_left(state: &mut DepotState, frame: &mut Frame, area: Rect) -> Result<(), Error> {
     render_catalog(state, frame, area)?;
 
@@ -84,7 +92,7 @@ fn render_catalog(state: &mut DepotState, frame: &mut Frame, area: Rect) -> Resu
         .store
         .0
         .iter()
-        .map(|krate| ListItem::from(krate.name.clone()).fg(DEFAULT_COLOR))
+        .map(|krate| ListItem::from(krate.name.clone()).fg(DEFAULT_PRIMARY_COLOR))
         .collect();
     let krate_list = List::new(krates)
         .block(
@@ -146,7 +154,7 @@ fn text_with_title<'a>(title: &'a str, text: &'a str) -> Result<Vec<Span<'a>>, E
         Span::styled(
             format!("{title}: "),
             Style::default()
-                .fg(DEFAULT_COLOR)
+                .fg(DEFAULT_PRIMARY_COLOR)
                 .add_modifier(Modifier::BOLD),
         ),
         Span::styled(text, DEFAULT_STYLE),

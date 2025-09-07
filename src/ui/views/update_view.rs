@@ -1,11 +1,12 @@
 use super::{View, start_view::Start};
+use crate::app::App;
 use crate::depot::DepotMessage;
 use crate::errors::{ChannelError, Error};
 use crate::events::{AppEvent, Event};
 use crate::keys::Selectable;
-use crate::ui::{DEFAULT_COLOR, DEFAULT_STYLE, Drawable, HIGHLIGHT_STYLE};
+use crate::ui::{DEFAULT_PRIMARY_COLOR, DEFAULT_STYLE, Drawable, HIGHLIGHT_STYLE, render_helpline};
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
-use ratatui::layout::Margin;
+use ratatui::layout::{Constraint, Direction, Layout, Margin};
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, List, ListItem};
@@ -50,7 +51,7 @@ impl Drawable for Update {
                     krate.version.clone(),
                     krate.krate_info.info.latest_version.clone()
                 ))
-                .fg(DEFAULT_COLOR)
+                .fg(DEFAULT_PRIMARY_COLOR)
             };
             krates.push(item);
         }
@@ -66,18 +67,22 @@ impl Drawable for Update {
             .highlight_style(HIGHLIGHT_STYLE)
             .highlight_spacing(ratatui::widgets::HighlightSpacing::Always);
 
-        frame.render_stateful_widget(
-            krate_list,
-            frame.area().inner(Margin::new(20, 5)),
-            &mut state.update_list_state,
-        );
+        let layout = Layout::default()
+            .direction(Direction::Vertical)
+            .constraints(vec![Constraint::Fill(1), Constraint::Length(1)])
+            .split(frame.area().inner(Margin::new(20, 5)));
+
+        let (main_area, footer) = (layout[0], layout[1]);
+
+        frame.render_stateful_widget(krate_list, main_area, &mut state.update_list_state);
+        render_helpline(frame, footer)?;
 
         Ok(())
     }
 }
 
 impl Selectable for Update {
-    async fn select(app: &mut crate::app::App, key: &KeyEvent) -> Result<(), Error> {
+    async fn select(app: &mut App, key: &KeyEvent) -> Result<(), Error> {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc | KeyCode::Char('q')) => {
                 app.view = View::Start(Start);
