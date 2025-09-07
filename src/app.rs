@@ -48,7 +48,7 @@ impl App {
                 }
                 Event::App(event) => {
                     match event {
-                        AppEvent::Depot(msg) => msg.handle(&mut self.state)?,
+                        AppEvent::DepotEvent(msg) => msg.handle(&mut self.state)?,
                     };
                     // Redraw.
                     terminal.draw(|f| render(&mut self.view, &mut self.state, f).unwrap())?;
@@ -76,12 +76,12 @@ impl App {
                     names.iter().map(|n| NamedKrateInfo::get(n)).collect();
 
                 match resp {
-                    Ok(r) => {
-                        sender.send(Event::App(AppEvent::Depot(DepotMessage::FetchKrateInfo(r))))
-                    }
-                    Err(_) => sender.send(Event::App(AppEvent::Depot(DepotMessage::DepotError(
-                        crate::errors::ChannelError::KrateInfo,
-                    )))),
+                    Ok(r) => sender.send(Event::App(AppEvent::DepotEvent(
+                        DepotMessage::FetchKrateInfo(r),
+                    ))),
+                    Err(_) => sender.send(Event::App(AppEvent::DepotEvent(
+                        DepotMessage::DepotError(crate::errors::ChannelError::KrateInfo),
+                    ))),
                 }
             });
         }

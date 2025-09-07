@@ -78,16 +78,14 @@ impl Selectable for Update {
                     let k = &app.state.depot.get_outdated_krates()?.0[ix];
                     let kk = k.clone();
                     let tx = app.events.get_sender();
-                    // Decouples the update logic to make sure this doesn't block the UI
+                    // Decouples the update logic to so that this doesn't block the UI
                     tokio::spawn(async move {
                         let res = kk.update().await;
                         match res {
-                            Ok(_) => {
-                                tx.send(Event::App(AppEvent::Depot(DepotMessage::UpdateKrate {
-                                    krate: kk.name,
-                                })))
-                            }
-                            Err(_) => tx.send(Event::App(AppEvent::Depot(
+                            Ok(_) => tx.send(Event::App(AppEvent::DepotEvent(
+                                DepotMessage::UpdateKrate { krate: kk.name },
+                            ))),
+                            Err(_) => tx.send(Event::App(AppEvent::DepotEvent(
                                 DepotMessage::DepotError(ChannelError::UpdateKrate),
                             ))),
                         }

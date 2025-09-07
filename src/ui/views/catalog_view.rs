@@ -197,8 +197,10 @@ fn delete_selected_crate(app: &mut App) {
         let tx = app.events.get_sender();
         tokio::spawn(async move {
             let _ = match &kk.uninstall().await {
-                Ok(_) => tx.send(Event::App(AppEvent::Depot(DepotMessage::UninstallKrate))),
-                Err(_) => tx.send(Event::App(AppEvent::Depot(DepotMessage::DepotError(
+                Ok(_) => tx.send(Event::App(AppEvent::DepotEvent(
+                    DepotMessage::UninstallKrate,
+                ))),
+                Err(_) => tx.send(Event::App(AppEvent::DepotEvent(DepotMessage::DepotError(
                     ChannelError::UninstallKrate,
                 )))),
             };
