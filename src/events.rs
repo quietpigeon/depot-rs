@@ -33,7 +33,7 @@ pub enum Event {
 #[derive(Clone, Debug)]
 pub enum AppEvent {
     // TODO: Extract `DepotMessage`.
-    Depot(DepotMessage),
+    DepotEvent(DepotMessage),
 }
 
 /// Terminal event handler.

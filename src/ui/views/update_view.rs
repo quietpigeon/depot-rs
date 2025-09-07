@@ -6,8 +6,10 @@ use crate::keys::Selectable;
 use crate::ui::{DEFAULT_COLOR, DEFAULT_STYLE, Drawable, HIGHLIGHT_STYLE};
 use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::layout::Margin;
-use ratatui::style::Stylize;
+use ratatui::style::{Color, Modifier, Style, Stylize};
+use ratatui::text::{Line, Span};
 use ratatui::widgets::{Block, List, ListItem};
+use throbber_widgets_tui::Throbber;
 
 #[derive(Debug)]
 pub struct Update;
@@ -17,12 +19,31 @@ impl Drawable for Update {
         state: &mut crate::depot::DepotState,
         frame: &mut ratatui::Frame,
     ) -> Result<(), crate::errors::Error> {
-        let krates: Vec<ListItem> = state
-            .depot
-            .get_outdated_krates()?
-            .0
-            .iter()
-            .map(|krate| {
+        let outdated_krates = state.depot.get_outdated_krates()?.0.clone();
+        let updating_krates = state.get_update_items();
+        let mut krates: Vec<ListItem> = Vec::new();
+
+        let throbber_style = Style::new().fg(Color::White).add_modifier(Modifier::ITALIC);
+        let throbber = Throbber::default()
+            .style(throbber_style)
+            .to_symbol_span(&state.throbber_state);
+
+        for krate in outdated_krates {
+            let item = if updating_krates.contains(&krate.name) {
+                let line = Span::raw(format!(
+                    "{}  {} -> {}",
+                    krate.name.clone(),
+                    krate.version.clone(),
+                    krate.krate_info.info.latest_version.clone()
+                ))
+                .style(DEFAULT_STYLE);
+
+                let tab_spacer = Span::raw("\t");
+                let label = Span::styled("updating", throbber_style);
+                let line = Line::from(vec![line, tab_spacer, throbber.clone(), label]);
+
+                ListItem::from(line)
+            } else {
                 ListItem::from(format!(
                     "{}  {} -> {}",
                     krate.name.clone(),
@@ -30,8 +51,10 @@ impl Drawable for Update {
                     krate.krate_info.info.latest_version.clone()
                 ))
                 .fg(DEFAULT_COLOR)
-            })
-            .collect();
+            };
+            krates.push(item);
+        }
+
         let krate_list = List::new(krates)
             .block(
                 Block::bordered()
@@ -76,18 +99,18 @@ impl Selectable for Update {
             (_, KeyCode::Enter) => {
                 if let Some(ix) = app.state.update_list_state.selected() {
                     let k = &app.state.depot.get_outdated_krates()?.0[ix];
+                    app.state.append_to_update_queue(&k.name);
+
                     let kk = k.clone();
                     let tx = app.events.get_sender();
-                    // Decouples the update logic to make sure this doesn't block the UI
+                    // Decouples the update logic to so that this doesn't block the UI
                     tokio::spawn(async move {
                         let res = kk.update().await;
                         match res {
-                            Ok(_) => {
-                                tx.send(Event::App(AppEvent::Depot(DepotMessage::UpdateKrate {
-                                    krate: kk.name,
-                                })))
-                            }
-                            Err(_) => tx.send(Event::App(AppEvent::Depot(
+                            Ok(_) => tx.send(Event::App(AppEvent::DepotEvent(
+                                DepotMessage::UpdateKrate { krate: kk.name },
+                            ))),
+                            Err(_) => tx.send(Event::App(AppEvent::DepotEvent(
                                 DepotMessage::DepotError(ChannelError::UpdateKrate),
                             ))),
                         }

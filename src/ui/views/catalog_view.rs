@@ -1,6 +1,8 @@
 use super::{View, start_view::Start};
 use crate::app::App;
 use crate::depot::{DepotMessage, Krate};
+use crate::errors::ChannelError;
+use crate::events::{AppEvent, Event};
 use crate::ui::{DEFAULT_COLOR, DEFAULT_STYLE, HIGHLIGHT_STYLE};
 use crate::{depot::DepotState, errors::Error, keys::Selectable, ui::Drawable};
 use ratatui::Frame;
@@ -192,13 +194,15 @@ fn delete_selected_crate(app: &mut App) {
         app.state.list_state.select(None);
         let k = &app.state.depot.store.0[ix];
         let kk = k.clone();
-        let tx = app.state.tx.clone();
+        let tx = app.events.get_sender();
         tokio::spawn(async move {
             let _ = match &kk.uninstall().await {
-                Ok(_) => tx.send(DepotMessage::UninstallKrate),
-                Err(_) => tx.send(DepotMessage::DepotError(
-                    crate::errors::ChannelError::UninstallKrate,
-                )),
+                Ok(_) => tx.send(Event::App(AppEvent::DepotEvent(
+                    DepotMessage::UninstallKrate,
+                ))),
+                Err(_) => tx.send(Event::App(AppEvent::DepotEvent(DepotMessage::DepotError(
+                    ChannelError::UninstallKrate,
+                )))),
             };
         });
         // NOTE: Is it safe to assume `ix` in `app.list_state` is the same as in

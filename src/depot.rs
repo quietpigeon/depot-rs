@@ -10,8 +10,9 @@ use nom::multi::separated_list0;
 use nom::sequence::preceded;
 use nom::{IResult, Parser, multi::separated_list1};
 use ratatui::widgets::ListState;
+use std::collections::HashSet;
 use std::fmt::Display;
-use std::sync::mpsc::channel;
+use throbber_widgets_tui::ThrobberState;
 use versions::SemVer;
 
 #[derive(Debug, Clone)]
@@ -26,7 +27,7 @@ impl DepotMessage {
     pub fn handle(self, state: &mut DepotState) -> Result<(), Error> {
         match self {
             DepotMessage::FetchKrateInfo(r) => state.sync(r)?,
-            DepotMessage::UpdateKrate { krate } => state.sync_krate(&krate)?,
+            DepotMessage::UpdateKrate { krate } => state.update_krate(&krate)?,
             DepotMessage::UninstallKrate => {}
             DepotMessage::DepotError(e) => return Err(Error::HandleKrate(e)),
         }
@@ -40,8 +41,8 @@ pub struct DepotState {
     pub depot: Depot,
     pub list_state: ListState,
     pub update_list_state: ListState,
-    pub throbber_state: throbber_widgets_tui::ThrobberState,
-    pub tx: std::sync::mpsc::Sender<DepotMessage>,
+    pub throbber_state: ThrobberState,
+    update_queue: HashSet<String>,
 }
 
 impl Default for DepotState {
@@ -50,14 +51,14 @@ impl Default for DepotState {
         let list_state = ListState::default();
         let update_list_state = ListState::default();
         let throbber_state = throbber_widgets_tui::ThrobberState::default();
-        let (tx, _) = channel::<DepotMessage>();
+        let update_queue: HashSet<String> = HashSet::new();
 
         Self {
             depot,
             list_state,
             update_list_state,
             throbber_state,
-            tx,
+            update_queue,
         }
     }
 }
@@ -67,12 +68,21 @@ impl DepotState {
         self.depot.store.0.iter().all(|k| k.krate_info.info.synced)
     }
 
-    pub fn sync_krate(&mut self, name: &str) -> Result<(), Error> {
+    pub fn update_krate(&mut self, name: &str) -> Result<(), Error> {
         if let Some(k) = self.depot.store.0.iter_mut().find(|k| k.name == name) {
             k.update_version()?;
+            self.update_queue.remove(name);
         }
 
         Ok(())
+    }
+
+    pub fn get_update_items(&self) -> HashSet<String> {
+        self.update_queue.clone()
+    }
+
+    pub fn append_to_update_queue(&mut self, krate: &str) {
+        self.update_queue.insert(krate.to_string());
     }
 
     fn sync(&mut self, info: Vec<NamedKrateInfo>) -> Result<(), Error> {
