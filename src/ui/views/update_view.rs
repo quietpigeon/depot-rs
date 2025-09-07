@@ -87,14 +87,14 @@ impl Selectable for Update {
             (_, KeyCode::Esc | KeyCode::Char('q')) => {
                 app.view = View::Start(Start);
             }
-            (_, KeyCode::Char('j')) => {
+            (_, KeyCode::Char('j')) | (_, KeyCode::Down) => {
                 if app.state.update_list_state.selected().is_none() {
                     app.state.update_list_state.select(Some(0))
                 } else {
                     app.state.update_list_state.select_next();
                 }
             }
-            (_, KeyCode::Char('k')) => {
+            (_, KeyCode::Char('k')) | (_, KeyCode::Up) => {
                 if app.state.update_list_state.selected().is_none() {
                     app.state.update_list_state.select(Some(0))
                 } else {

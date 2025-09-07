@@ -168,8 +168,8 @@ impl Selectable for Catalog {
         match (key.modifiers, key.code) {
             (_, KeyCode::Esc | KeyCode::Char('q')) => app.view = View::Start(Start),
             // Here, we assume all of the crate info has been fetched.
-            (_, KeyCode::Char('j')) => select_next(&mut app.state)?,
-            (_, KeyCode::Char('k')) => select_previous(&mut app.state)?,
+            (_, KeyCode::Char('j')) | (_, KeyCode::Down) => select_next(&mut app.state)?,
+            (_, KeyCode::Char('k')) | (_, KeyCode::Up) => select_previous(&mut app.state)?,
             (_, KeyCode::Char('d')) => delete_selected_crate(app),
             _ => {}
         }
