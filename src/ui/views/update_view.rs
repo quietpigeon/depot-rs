@@ -43,7 +43,7 @@ impl Drawable for Update {
                 ))
                 .style(DEFAULT_STYLE);
 
-                let tab_spacer = Span::raw("\t");
+                let tab_spacer = Span::raw("  ");
                 let label = Span::styled("updating", throbber_style);
                 let line = Line::from(vec![line, tab_spacer, throbber.clone(), label]);
 
