@@ -2,9 +2,14 @@
 name = "depot-rs"
 version = "0.1.0"
 description = "A TUI for managing your crates."
-authors = ["pigeon <pigeon@quietpigeon.com>"]
+authors = ["Moreen Ho <pigeon@quietpigeon.com>"]
 license = "MIT"
 edition = "2024"
+readme = "README.md"
+
+[[bin]]
+name = "depot"
+path = "src/main.rs"
 
 [dependencies]
 crossterm = { version = "0.28.0", features = ["event-stream"] }
