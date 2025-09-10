@@ -15,7 +15,7 @@ use std::fmt::Display;
 use throbber_widgets_tui::ThrobberState;
 use versions::SemVer;
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DepotMessage {
     FetchKrateInfo(Vec<NamedKrateInfo>),
     UpdateKrate { krate: String },

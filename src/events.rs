@@ -9,7 +9,7 @@ use tokio::sync::mpsc;
 const TICK_FPS: f64 = 10.0;
 
 /// Representation of all possible events.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum Event {
     /// An event that is emitted on a regular schedule.
     ///
@@ -30,7 +30,7 @@ pub enum Event {
 /// Application events.
 ///
 /// You can extend this enum with your own custom events.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum AppEvent {
     // TODO: Extract `DepotMessage`.
     DepotEvent(DepotMessage),

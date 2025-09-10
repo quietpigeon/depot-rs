@@ -25,7 +25,7 @@ impl From<nom::Err<nom::error::Error<&str>>> for Error {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ChannelError {
     UpdateKrate,
     UninstallKrate,

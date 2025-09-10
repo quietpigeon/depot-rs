@@ -69,21 +69,24 @@ impl App {
                 .iter()
                 .map(|k| k.name.clone())
                 .collect();
-            let sender = self.events.get_sender();
 
-            tokio::spawn(async move {
-                let resp: Result<Vec<NamedKrateInfo>, Error> =
-                    names.iter().map(|n| NamedKrateInfo::get(n)).collect();
+            if !names.is_empty() {
+                let sender = self.events.get_sender();
 
-                match resp {
-                    Ok(r) => sender.send(Event::App(AppEvent::DepotEvent(
-                        DepotMessage::FetchKrateInfo(r),
-                    ))),
-                    Err(_) => sender.send(Event::App(AppEvent::DepotEvent(
-                        DepotMessage::DepotError(crate::errors::ChannelError::KrateInfo),
-                    ))),
-                }
-            });
+                tokio::spawn(async move {
+                    let resp: Result<Vec<NamedKrateInfo>, Error> =
+                        names.iter().map(|n| NamedKrateInfo::get(n)).collect();
+
+                    match resp {
+                        Ok(r) => sender.send(Event::App(AppEvent::DepotEvent(
+                            DepotMessage::FetchKrateInfo(r),
+                        ))),
+                        Err(_) => sender.send(Event::App(AppEvent::DepotEvent(
+                            DepotMessage::DepotError(crate::errors::ChannelError::KrateInfo),
+                        ))),
+                    }
+                });
+            }
         }
         self.has_initialized = true;
 
@@ -92,5 +95,28 @@ impl App {
 
     fn on_tick(&mut self) {
         self.state.throbber_state.calc_next();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{app::App, events::Event};
+
+    #[tokio::test]
+    async fn handle_init_initializes_app() {
+        let mut mock_app = App::new();
+        mock_app.handle_init().unwrap();
+
+        assert!(mock_app.has_initialized)
+    }
+
+    #[tokio::test]
+    async fn handle_init_with_no_crates() {
+        let mut mock_app = App::new();
+        mock_app.state.depot.store.0.clear();
+        mock_app.handle_init().unwrap();
+
+        let event = mock_app.events.next().await.unwrap();
+        assert!(event == Event::Tick)
     }
 }
