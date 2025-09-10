@@ -2,6 +2,8 @@
 
 A TUI for managing crates, all at one place.
 
+![StartMenu](src/docs/start_menu.png)
+
 ## Features
 
 - A dashboard to view all installed crates with their metadata 
@@ -30,9 +32,13 @@ It should bring you to a loading screen. This may take a while if it is the firs
 
 ### Dashboard
 
+![Dashboard](src/docs/dashboard.png)
+
 Press <kbd>c</kbd> from the menu to open the dashboard. Use vim-keybindings or arrow keys to navigate up and down, and press <kbd>d</kbd> to uninstall a crate.
 
 ### Update a crate
+
+![Update](src/docs/update.png)
 
 Press <kbd>u</kbd> from the menu to see what crates are outdated. Use vim-keybindings or arrow keys to navigate up and down, and press <kbd>ENTER</kbd> to update a crate.
 
