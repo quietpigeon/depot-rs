@@ -6,6 +6,10 @@ authors = ["Moreen Ho <pigeon@quietpigeon.com>"]
 license = "MIT"
 edition = "2024"
 readme = "README.md"
+repository = "https://codeberg.org/kereru/depot-rs"
+homepage = "https://codeberg.org/kereru/depot-rs"
+keywords = ["ratatui", "tui", "terminal", "crates"]
+exclude = ["docs/*"]
 
 [[bin]]
 name = "depot"
