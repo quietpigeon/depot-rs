@@ -150,15 +150,25 @@ pub struct Krate {
     pub name: String,
     pub version: SemVer,
     pub binaries: Vec<String>,
-    pub metadata: KrateMetadata,
+    metadata: KrateMetadata,
 }
 
 impl Krate {
-    pub fn is_latest(&self) -> bool {
-        if let Some(latest_version) = &self.metadata.info.latest_version {
-            latest_version == &self.version
+    pub fn description(&self) -> String {
+        if let Some(description) = &self.metadata.info.description {
+            description.clone()
         } else {
-            true
+            "not available".to_string()
+        }
+    }
+
+    pub fn tags_str(&self) -> String {
+        if let Some(tags) = &self.metadata.info.tags
+            && !tags.0.is_empty()
+        {
+            tags.to_string()
+        } else {
+            "".to_string()
         }
     }
 
@@ -167,6 +177,54 @@ impl Krate {
             latest_version.clone()
         } else {
             self.version.clone()
+        }
+    }
+
+    pub fn license(&self) -> String {
+        if let Some(license) = &self.metadata.info.license {
+            license.clone()
+        } else {
+            "not found".to_string()
+        }
+    }
+
+    pub fn rust_version_str(&self) -> String {
+        if let Some(rv) = &self.metadata.info.rust_version {
+            rv.to_string()
+        } else {
+            "unknown".to_string()
+        }
+    }
+
+    pub fn documentation(&self) -> String {
+        if let Some(documentation) = &self.metadata.info.documentation {
+            documentation.clone()
+        } else {
+            "".to_string()
+        }
+    }
+
+    pub fn homepage(&self) -> String {
+        if let Some(hp) = &self.metadata.info.homepage {
+            hp.clone()
+        } else {
+            "".to_string()
+        }
+    }
+
+    pub fn repository(&self) -> String {
+        if let Some(repository) = &self.metadata.info.repository {
+            repository.clone()
+        } else {
+            "".to_string()
+        }
+    }
+
+    pub fn is_latest(&self) -> bool {
+        if let Some(latest_version) = &self.metadata.info.latest_version {
+            latest_version == &self.version
+        } else {
+            true
         }
     }
 
@@ -227,8 +285,8 @@ fn parse_ver<'a>(s: &'a str, n: &'a str) -> IResult<&'a str, SemVer> {
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
 pub struct KrateMetadata {
-    pub name: String,
-    pub info: KrateInfo,
+    name: String,
+    info: KrateInfo,
 }
 
 impl KrateMetadata {
@@ -247,18 +305,18 @@ impl KrateMetadata {
 
 /// Contains latest information about the crate from crates.io.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct KrateInfo {
-    pub description: Option<String>,
-    pub tags: Option<Tags>,
-    pub latest_version: Option<SemVer>,
-    pub license: Option<String>,
+struct KrateInfo {
+    description: Option<String>,
+    tags: Option<Tags>,
+    latest_version: Option<SemVer>,
+    license: Option<String>,
     // Some crates have "unknown" as their Rust version.
-    pub rust_version: Option<SemVer>,
+    rust_version: Option<SemVer>,
     // NOTE: Let's keep the urls as strings for now as it's easier to parse and display.
-    pub documentation: Option<String>,
-    pub homepage: Option<String>,
-    pub repository: Option<String>,
-    pub crates_io: Option<String>,
+    documentation: Option<String>,
+    homepage: Option<String>,
+    repository: Option<String>,
+    crates_io: Option<String>,
     synced: bool,
 }
 
@@ -321,7 +379,7 @@ impl KrateInfo {
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Tags(pub Vec<String>);
+pub struct Tags(Vec<String>);
 
 impl Display for Tags {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

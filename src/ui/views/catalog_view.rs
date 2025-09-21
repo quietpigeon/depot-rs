@@ -102,7 +102,7 @@ fn render_right(krate: &Krate, frame: &mut Frame, area: Rc<[Rect]>) -> Result<()
     // NOTE: This assumes every crate must have a description.
     // This is true for crates that have been uploaded to crates.io, but it might break for local
     // crates that don't have a description yet.
-    if !krate.metadata.info.description.is_none() {
+    if !&krate.description().is_empty() {
         render_krate_summary(krate, frame, area[0])?;
     }
 
@@ -139,51 +139,46 @@ fn render_krate_summary(
     area: Rect,
 ) -> Result<(), Error> {
     let mut lines = vec![];
-    let mut ts = String::new();
 
-    if let Some(d) = &krate.metadata.info.description {
-        let description = vec![Span::styled(d, DEFAULT_STYLE)];
-        lines.push(Line::from(description));
-    }
+    let description = vec![Span::styled(krate.description(), DEFAULT_STYLE)];
+    lines.push(Line::from(description));
 
     let spacer = vec![Span::styled("\n", DEFAULT_STYLE)];
     lines.push(Line::from(spacer));
 
-    if let Some(t) = &krate.metadata.info.tags {
-        ts = t.to_string();
-    }
-    let tags = text_with_title(" Tags", &ts)?;
-    lines.push(Line::from(tags));
-
-    if let Some(l) = &krate.metadata.info.license {
-        let license = text_with_title("󰿃 License", l)?;
-        lines.push(Line::from(license));
+    let tags = &krate.tags_str();
+    if !tags.is_empty() {
+        let tags = text_with_title(" Tags", tags)?;
+        lines.push(Line::from(tags));
     }
 
-    let rv = match &krate.metadata.info.rust_version {
-        Some(v) => v.to_string(),
-        None => "unknown".to_string(),
-    };
-    let rust_version = text_with_title(" Rust version", &rv)?;
+    let license = &krate.license();
+    let license = text_with_title("󰿃 License", license)?;
+    lines.push(Line::from(license));
+
+    let rv = &krate.rust_version_str();
+    let rust_version = text_with_title(" Rust version", rv)?;
     lines.push(Line::from(rust_version));
 
-    if let Some(d) = &krate.metadata.info.documentation {
-        let docs = text_with_title("󰈙 Documentation", d)?;
+    let docs = &krate.documentation();
+    if !docs.is_empty() {
+        let docs = text_with_title("󰈙 Documentation", docs)?;
         lines.push(Line::from(docs));
-    };
+    }
 
-    if let Some(hp) = &krate.metadata.info.homepage {
+    let hp = &krate.homepage();
+    if !hp.is_empty() {
         let homepage = text_with_title("󰋜 Homepage", hp)?;
         lines.push(Line::from(homepage));
-    };
+    }
 
-    if let Some(r) = &krate.metadata.info.repository {
-        let repo = text_with_title("󰳏 Repository", r)?;
+    let repo = &krate.repository();
+    if !repo.is_empty() {
+        let repo = text_with_title("󰳏 Repository", repo)?;
         lines.push(Line::from(repo));
     }
 
     let text = Text::from(lines);
-
     frame.render_widget(Paragraph::new(text).wrap(Wrap { trim: true }), area);
 
     Ok(())
