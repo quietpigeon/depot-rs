@@ -39,7 +39,7 @@ impl Drawable for Start {
             banner_area,
         );
 
-        if !state.synced() {
+        if !state.is_all_synced() {
             frame.render_widget(load_progress::new(&state.throbber_state)?, layout[2]);
         } else {
             let outdated_krate_count = state.depot.outdated_krate_count()?;
@@ -76,7 +76,7 @@ impl Selectable for Start {
             (_, KeyCode::Esc | KeyCode::Char('q'))
             | (KeyModifiers::CONTROL, KeyCode::Char('c') | KeyCode::Char('C')) => app.quit(),
             (_, KeyCode::Char('c')) => {
-                if app.state.synced() {
+                if app.state.is_all_synced() {
                     app.view = View::Catalog(Catalog)
                 }
             }
