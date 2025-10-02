@@ -39,7 +39,7 @@ impl Drawable for Update {
                     "{}  {} -> {}",
                     krate.name.clone(),
                     krate.version.clone(),
-                    krate.krate_info.info.latest_version.clone()
+                    krate.latest_version()
                 ))
                 .style(DEFAULT_STYLE);
 
@@ -53,7 +53,7 @@ impl Drawable for Update {
                     "{}  {} -> {}",
                     krate.name.clone(),
                     krate.version.clone(),
-                    krate.krate_info.info.latest_version.clone()
+                    krate.latest_version()
                 ))
                 .fg(DEFAULT_PRIMARY_COLOR)
             };

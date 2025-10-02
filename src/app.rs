@@ -1,4 +1,4 @@
-use crate::depot::{DepotMessage, DepotState, NamedKrateInfo};
+use crate::depot::{DepotMessage, DepotState, KrateMetadata};
 use crate::errors::Error;
 use crate::events::{AppEvent, Event, EventHandler};
 use crate::keys::key_handler;
@@ -74,8 +74,8 @@ impl App {
                 let sender = self.events.get_sender();
 
                 tokio::spawn(async move {
-                    let resp: Result<Vec<NamedKrateInfo>, Error> =
-                        names.iter().map(|n| NamedKrateInfo::get(n)).collect();
+                    let resp: Result<Vec<KrateMetadata>, Error> =
+                        names.iter().map(|n| KrateMetadata::get(n)).collect();
 
                     match resp {
                         Ok(r) => sender.send(Event::App(AppEvent::DepotEvent(

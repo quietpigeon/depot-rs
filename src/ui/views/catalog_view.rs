@@ -102,7 +102,7 @@ fn render_right(krate: &Krate, frame: &mut Frame, area: Rc<[Rect]>) -> Result<()
     // NOTE: This assumes every crate must have a description.
     // This is true for crates that have been uploaded to crates.io, but it might break for local
     // crates that don't have a description yet.
-    if !krate.krate_info.info.description.is_empty() {
+    if !&krate.description().is_empty() {
         render_krate_summary(krate, frame, area[0])?;
     }
 
@@ -139,34 +139,46 @@ fn render_krate_summary(
     area: Rect,
 ) -> Result<(), Error> {
     let mut lines = vec![];
-    let d = &krate.krate_info.info.description;
-    let t = &krate.krate_info.info.tags.to_string();
-    let description = vec![Span::styled(d, DEFAULT_STYLE)];
-    let spacer = vec![Span::styled("\n", DEFAULT_STYLE)];
-    let tags = text_with_title(" Tags", t)?;
-    let license = text_with_title("󰿃 License", &krate.krate_info.info.license)?;
-    let rv = match &krate.krate_info.info.rust_version {
-        Some(v) => v.to_string(),
-        None => "unknown".to_string(),
-    };
-    let rust_version = text_with_title(" Rust version", &rv)?;
-    let docs = text_with_title("󰈙 Documentation", &krate.krate_info.info.documentation)?;
-    let hp = text_with_title("󰋜 Homepage", &krate.krate_info.info.homepage)?;
-    let repo = text_with_title("󰳏 Repository", &krate.krate_info.info.repository)?;
 
+    let description = vec![Span::styled(krate.description(), DEFAULT_STYLE)];
     lines.push(Line::from(description));
+
+    let spacer = vec![Span::styled("\n", DEFAULT_STYLE)];
     lines.push(Line::from(spacer));
-    if !&krate.krate_info.info.tags.0.is_empty() {
+
+    let tags = &krate.tags_str();
+    if !tags.is_empty() {
+        let tags = text_with_title(" Tags", tags)?;
         lines.push(Line::from(tags));
     }
+
+    let license = &krate.license();
+    let license = text_with_title("󰿃 License", license)?;
     lines.push(Line::from(license));
+
+    let rv = &krate.rust_version_str();
+    let rust_version = text_with_title(" Rust version", rv)?;
     lines.push(Line::from(rust_version));
-    lines.push(Line::from(docs));
-    lines.push(Line::from(hp));
-    lines.push(Line::from(repo));
+
+    let docs = &krate.documentation();
+    if !docs.is_empty() {
+        let docs = text_with_title("󰈙 Documentation", docs)?;
+        lines.push(Line::from(docs));
+    }
+
+    let hp = &krate.homepage();
+    if !hp.is_empty() {
+        let homepage = text_with_title("󰋜 Homepage", hp)?;
+        lines.push(Line::from(homepage));
+    }
+
+    let repo = &krate.repository();
+    if !repo.is_empty() {
+        let repo = text_with_title("󰳏 Repository", repo)?;
+        lines.push(Line::from(repo));
+    }
 
     let text = Text::from(lines);
-
     frame.render_widget(Paragraph::new(text).wrap(Wrap { trim: true }), area);
 
     Ok(())

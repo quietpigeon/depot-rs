@@ -17,7 +17,7 @@ use versions::SemVer;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DepotMessage {
-    FetchKrateInfo(Vec<NamedKrateInfo>),
+    FetchKrateInfo(Vec<KrateMetadata>),
     UpdateKrate { krate: String },
     UninstallKrate,
     DepotError(ChannelError),
@@ -64,8 +64,8 @@ impl Default for DepotState {
 }
 
 impl DepotState {
-    pub fn synced(&self) -> bool {
-        self.depot.store.0.iter().all(|k| k.krate_info.info.synced)
+    pub fn is_all_synced(&self) -> bool {
+        self.depot.store.0.iter().all(|k| k.is_metadata_synced())
     }
 
     pub fn update_krate(&mut self, name: &str) -> Result<(), Error> {
@@ -85,10 +85,10 @@ impl DepotState {
         self.update_queue.insert(krate.to_string());
     }
 
-    fn sync(&mut self, info: Vec<NamedKrateInfo>) -> Result<(), Error> {
+    fn sync(&mut self, info: Vec<KrateMetadata>) -> Result<(), Error> {
         for krate in &mut self.depot.store.0 {
             if let Some(ki) = info.iter().find(|&i| krate.name == i.name) {
-                krate.krate_info = ki.clone();
+                krate.metadata = ki.clone();
             } else {
                 return Err(Error::Unexpected("unmatched name".to_string()));
             }
@@ -115,7 +115,6 @@ impl Depot {
         Ok(Self { store })
     }
 
-    /// Which one of you is outdated?
     pub fn get_outdated_krates(&self) -> Result<Krates, Error> {
         let k = self
             .store
@@ -151,12 +150,86 @@ pub struct Krate {
     pub name: String,
     pub version: SemVer,
     pub binaries: Vec<String>,
-    pub krate_info: NamedKrateInfo,
+    metadata: KrateMetadata,
 }
 
 impl Krate {
+    pub fn description(&self) -> String {
+        if let Some(description) = &self.metadata.info.description {
+            description.clone()
+        } else {
+            "not available".to_string()
+        }
+    }
+
+    pub fn tags_str(&self) -> String {
+        if let Some(tags) = &self.metadata.info.tags
+            && !tags.0.is_empty()
+        {
+            tags.to_string()
+        } else {
+            "".to_string()
+        }
+    }
+
+    pub fn latest_version(&self) -> SemVer {
+        if let Some(latest_version) = &self.metadata.info.latest_version {
+            latest_version.clone()
+        } else {
+            self.version.clone()
+        }
+    }
+
+    pub fn license(&self) -> String {
+        if let Some(license) = &self.metadata.info.license {
+            license.clone()
+        } else {
+            "not found".to_string()
+        }
+    }
+
+    pub fn rust_version_str(&self) -> String {
+        if let Some(rv) = &self.metadata.info.rust_version {
+            rv.to_string()
+        } else {
+            "unknown".to_string()
+        }
+    }
+
+    pub fn documentation(&self) -> String {
+        if let Some(documentation) = &self.metadata.info.documentation {
+            documentation.clone()
+        } else {
+            "".to_string()
+        }
+    }
+
+    pub fn homepage(&self) -> String {
+        if let Some(hp) = &self.metadata.info.homepage {
+            hp.clone()
+        } else {
+            "".to_string()
+        }
+    }
+
+    pub fn repository(&self) -> String {
+        if let Some(repository) = &self.metadata.info.repository {
+            repository.clone()
+        } else {
+            "".to_string()
+        }
+    }
+
     pub fn is_latest(&self) -> bool {
-        self.krate_info.info.latest_version == self.version
+        if let Some(latest_version) = &self.metadata.info.latest_version {
+            latest_version == &self.version
+        } else {
+            true
+        }
+    }
+
+    pub fn is_metadata_synced(&self) -> bool {
+        self.metadata.info.synced
     }
 
     pub fn update_version(&mut self) -> Result<(), Error> {
@@ -211,12 +284,12 @@ fn parse_ver<'a>(s: &'a str, n: &'a str) -> IResult<&'a str, SemVer> {
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct NamedKrateInfo {
-    pub name: String,
-    pub info: KrateInfo,
+pub struct KrateMetadata {
+    name: String,
+    info: KrateInfo,
 }
 
-impl NamedKrateInfo {
+impl KrateMetadata {
     /// Get the info of the given crate.
     pub fn get(name: &str) -> Result<Self, Error> {
         let s = search_crate(name)?;
@@ -232,56 +305,61 @@ impl NamedKrateInfo {
 
 /// Contains latest information about the crate from crates.io.
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct KrateInfo {
-    pub description: String,
-    pub tags: Tags,
-    pub latest_version: SemVer,
-    pub license: String,
+struct KrateInfo {
+    description: Option<String>,
+    tags: Option<Tags>,
+    latest_version: Option<SemVer>,
+    license: Option<String>,
     // Some crates have "unknown" as their Rust version.
-    pub rust_version: Option<SemVer>,
+    rust_version: Option<SemVer>,
     // NOTE: Let's keep the urls as strings for now as it's easier to parse and display.
-    pub documentation: String,
-    pub homepage: String,
-    pub repository: String,
-    pub crates_io: String,
-    pub synced: bool,
+    documentation: Option<String>,
+    homepage: Option<String>,
+    repository: Option<String>,
+    crates_io: Option<String>,
+    synced: bool,
 }
 
 impl KrateInfo {
     fn parse(s: &str) -> IResult<&str, Self> {
         let (s, _) = alphanumeric1_with_hyphen(s)?;
         let (s, _) = multispace0(s)?;
-        let (s, tags) = map(opt(Tags::parse), |t| t.unwrap_or_default()).parse(s)?;
+        let (s, tags) = opt(map(opt(Tags::parse), |t| t.unwrap_or_default())).parse(s)?;
         let (s, _) = multispace0(s)?;
-        let (s, description) = map(take_until("version"), String::from).parse(s)?;
+        let (s, description) = opt(map(take_until("version"), String::from)).parse(s)?;
         let (s, _) = ws(tag("version:")).parse(s)?;
-        let (s, latest_version) = SemVer::parse(s)?;
+        let (s, latest_version) = opt(SemVer::parse).parse(s)?;
         let (s, _) = newline(s)?;
         let (s, _) = ws(tag("license:")).parse(s)?;
-        let (s, license) = map(take_until("\n"), String::from).parse(s)?;
+        let (s, license) = opt(map(take_until("\n"), String::from)).parse(s)?;
         let (s, _) = newline(s)?;
         let (s, _) = ws(tag("rust-version:")).parse(s)?;
         let (s, rust_version) = opt(SemVer::parse).parse(s)?;
         // When the Rust version is "unknown".
         let (s, _) = take_until("\n")(s)?;
-        let (s, _) = ws(tag("documentation:")).parse(s)?;
-        let (s, documentation) = map(take_until("\n"), String::from).parse(s)?;
-        let (s, homepage) = map(opt(preceded(ws(tag("homepage:")), take_until("\n"))), |d| {
-            d.unwrap_or("not available").to_string()
-        })
+        let (s, _) = opt(ws(tag("documentation:"))).parse(s)?;
+        let (s, documentation) = opt(map(take_until("\n"), String::from)).parse(s)?;
+        let (s, homepage) = opt(map(
+            opt(preceded(ws(tag("homepage:")), take_until("\n"))),
+            |d| d.unwrap_or("not available").to_string(),
+        ))
         .parse(s)?;
         let (s, _) = multispace0(s)?;
-        let (s, repository) = map(
+        let (s, repository) = opt(map(
             opt(preceded(ws(tag("repository:")), take_until("\n"))),
             |d| d.unwrap_or("not available").to_string(),
-        )
+        ))
         .parse(s)?;
         let (s, _) = multispace0(s)?;
         let (s, _) = ws(tag("crates.io:")).parse(s)?;
-        let (s, crates_io) = map(take_until("\n"), String::from).parse(s)?;
-
-        let description = description.trim_end().to_string();
+        let (s, crates_io) = opt(map(take_until("\n"), String::from)).parse(s)?;
         let synced = true;
+
+        let description = if let Some(d) = description {
+            Some(d.trim_end().to_string())
+        } else {
+            description
+        };
 
         let k = Self {
             description,
@@ -301,7 +379,7 @@ impl KrateInfo {
 }
 
 #[derive(Clone, Debug, Default, PartialEq, Eq)]
-pub struct Tags(pub Vec<String>);
+pub struct Tags(Vec<String>);
 
 impl Display for Tags {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -471,21 +549,21 @@ foo v0.1.0:
         assert_eq!(
             KrateInfo::parse(output).unwrap().1,
             KrateInfo {
-                description: "A terminal-based dictionary app.".to_string(),
-                tags: Tags(vec![
+                description: Some("A terminal-based dictionary app.".to_string()),
+                tags: Some(Tags(vec![
                     "ratatui".to_string(),
                     "dictionary".to_string(),
                     "tui".to_string(),
                     "terminal".to_string(),
                     "thesaurus".to_string()
-                ]),
-                latest_version: SemVer::new("0.1.2").unwrap(),
-                license: "MIT".to_string(),
+                ])),
+                latest_version: Some(SemVer::new("0.1.2")).unwrap(),
+                license: Some("MIT".to_string()),
                 rust_version: None,
-                documentation: "https://docs.rs/cargo-thesaurust/0.1.2".to_string(),
-                homepage: "https://moreenh.me/pages/projects/cargo-thesaurust".to_string(),
-                repository: "https://github.com/quietpigeon/cargo-thesaurust".to_string(),
-                crates_io: "https://crates.io/crates/cargo-thesaurust/0.1.2".to_string(),
+                documentation: Some("https://docs.rs/cargo-thesaurust/0.1.2".to_string()),
+                homepage: Some("https://moreenh.me/pages/projects/cargo-thesaurust".to_string()),
+                repository: Some("https://github.com/quietpigeon/cargo-thesaurust".to_string()),
+                crates_io: Some("https://crates.io/crates/cargo-thesaurust/0.1.2".to_string()),
                 synced: true
             }
         )
@@ -507,15 +585,15 @@ foo v0.1.0:
         assert_eq!(
             KrateInfo::parse(output).unwrap().1,
             KrateInfo {
-                tags: Tags(vec![]),
-                description: "A terminal-based dictionary app.".to_string(),
-                latest_version: SemVer::new("0.1.2").unwrap(),
-                license: "MIT".to_string(),
+                tags: Some(Tags(vec![])),
+                description: Some("A terminal-based dictionary app.".to_string()),
+                latest_version: Some(SemVer::new("0.1.2")).unwrap(),
+                license: Some("MIT".to_string()),
                 rust_version: None,
-                documentation: "https://docs.rs/cargo-thesaurust/0.1.2".to_string(),
-                homepage: "https://moreenh.me/pages/projects/cargo-thesaurust".to_string(),
-                repository: "https://github.com/quietpigeon/cargo-thesaurust".to_string(),
-                crates_io: "https://crates.io/crates/cargo-thesaurust/0.1.2".to_string(),
+                documentation: Some("https://docs.rs/cargo-thesaurust/0.1.2".to_string()),
+                homepage: Some("https://moreenh.me/pages/projects/cargo-thesaurust".to_string()),
+                repository: Some("https://github.com/quietpigeon/cargo-thesaurust".to_string()),
+                crates_io: Some("https://crates.io/crates/cargo-thesaurust/0.1.2".to_string()),
                 synced: true
             }
         )
