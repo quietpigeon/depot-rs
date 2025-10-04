@@ -474,6 +474,12 @@ foo v0.1.0:
     }
 
     #[test]
+    fn parse_empty_krates() {
+        let s = "";
+        assert_eq!(Krates::parse(s).unwrap().1, Krates(vec![]))
+    }
+
+    #[test]
     fn parse_krate() {
         let s1 = r#"depot-rs v0.1.0:
         depot
