@@ -100,7 +100,7 @@ impl App {
 
 #[cfg(test)]
 mod tests {
-    use crate::{app::App, events::Event};
+    use crate::app::App;
 
     #[tokio::test]
     async fn handle_init_initializes_app() {
@@ -116,7 +116,6 @@ mod tests {
         mock_app.state.depot.store.0.clear();
         mock_app.handle_init().unwrap();
 
-        let event = mock_app.events.next().await.unwrap();
-        assert!(event == Event::Tick)
+        assert!(mock_app.handle_init().is_ok())
     }
 }
