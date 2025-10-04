@@ -138,7 +138,7 @@ pub struct Krates(pub Vec<Krate>);
 
 impl Krates {
     fn parse(s: &str) -> IResult<&str, Krates> {
-        let (s, krates) = separated_list1(newline, Krate::parse).parse(s)?;
+        let (s, krates) = separated_list0(newline, Krate::parse).parse(s)?;
         let k = Krates(krates);
 
         Ok((s, k))
@@ -557,7 +557,7 @@ foo v0.1.0:
                     "terminal".to_string(),
                     "thesaurus".to_string()
                 ])),
-                latest_version: Some(SemVer::new("0.1.2")).unwrap(),
+                latest_version: SemVer::new("0.1.2"),
                 license: Some("MIT".to_string()),
                 rust_version: None,
                 documentation: Some("https://docs.rs/cargo-thesaurust/0.1.2".to_string()),
@@ -587,7 +587,7 @@ foo v0.1.0:
             KrateInfo {
                 tags: Some(Tags(vec![])),
                 description: Some("A terminal-based dictionary app.".to_string()),
-                latest_version: Some(SemVer::new("0.1.2")).unwrap(),
+                latest_version: SemVer::new("0.1.2"),
                 license: Some("MIT".to_string()),
                 rust_version: None,
                 documentation: Some("https://docs.rs/cargo-thesaurust/0.1.2".to_string()),
