@@ -42,7 +42,7 @@ impl App {
             match self.events.next().await? {
                 Event::Tick => self.on_tick(),
                 Event::Crossterm(event) => {
-                    if let ratatui::crossterm::event::Event::Key(key_event) = event {
+                    if let crossterm::event::Event::Key(key_event) = event {
                         key_handler(&mut self, key_event).await?
                     }
                 }

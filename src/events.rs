@@ -1,7 +1,7 @@
 use crate::{depot::DepotMessage, errors::Error};
+use crossterm::event::Event as CrosstermEvent;
 use crossterm::event::EventStream;
 use futures::{FutureExt, StreamExt};
-use ratatui::crossterm::event::Event as CrosstermEvent;
 use std::time::Duration;
 use tokio::sync::mpsc;
 

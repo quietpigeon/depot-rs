@@ -7,8 +7,8 @@ use crate::keys::Selectable;
 use crate::ui::{
     DEFAULT_PRIMARY_COLOR, DEFAULT_SECONDARY_COLOR, DEFAULT_STYLE, Drawable, HIGHLIGHT_STYLE,
 };
+use crossterm::event::{KeyCode, KeyEvent};
 use ratatui::Frame;
-use ratatui::crossterm::event::{KeyCode, KeyEvent};
 use ratatui::layout::{Constraint, Direction, Layout, Margin, Rect};
 use ratatui::style::{Color, Modifier, Style, Stylize};
 use ratatui::text::{Line, Span};
